@@ -2,9 +2,9 @@
 
 ## Executive Summary
 
-This document describes the complete methodology used to evaluate Tibetan-Chinese bilingual AI models (Gemini 2.5 Pro/Flash and Claude Opus/Sonnet 4) on the Tibetan Language Understanding Evaluation (TLUE) benchmark, with particular emphasis on **validating answer key quality** through two independent approaches: cross-model agreement analysis and LLM-as-judge validation.
+This document describes the complete methodology used to evaluate large language models (Gemini 2.5 Pro/Flash and Claude Opus/Sonnet 4) on the Tibetan Language Understanding Evaluation (TLUE) benchmark(Original repository: [https://github.com/Vicentvankor/TLUE](https://github.com/Vicentvankor/TLUE], Original paper: [https://arxiv.org/pdf/2503.12051](https://arxiv.org/pdf/2503.12051]). This doc has particular emphasis on **validating answer key quality** through two independent approaches: cross-model agreement analysis and LLM-as-judge validation.
 
-Our findings reveal significant answer key quality issues affecting 16-37% of questions, and demonstrate that filtering by data quality can improve measured accuracy by 13-37 percentage points. Critically, we identified **substantial judge bias** (21.5× agreement ratio favoring same-family models) when using Gemini as judge, highlighting the importance of using agreement-based filtering as a complementary or primary validation method.
+Our findings reveal answer key quality issues potentially affecting 16-37% of questions, and demonstrate that filtering by data quality can improve measured accuracy by 13-37 percentage points. Critically, we also identified **substantial judge bias** (21.5× agreement ratio favoring same-family models) when using Gemini as judge. A deep dive on this potential bias is required to check if it's true bias or true accuracy, highlighting the importance of using agreement-based filtering as a complementary or primary validation method.
 
 ---
 
@@ -27,21 +27,22 @@ Our findings reveal significant answer key quality issues affecting 16-37% of qu
 
 ### 1.1 Background
 
-The Tibetan Language Understanding Evaluation (TLUE) is a multiple-choice benchmark dataset designed to evaluate AI models' understanding of Tibetan-Chinese bilingual content across 67 academic subjects. The dataset contains **670 questions** drawn from subjects ranging from agronomy to world history.
+The original Tibetan Language Understanding Evaluation (TLUE) is a multiple-choice benchmark dataset designed to evaluate AI models' understanding of Tibetan-Chinese bilingual content across 67 academic subjects. The partially released dataset contains **670 questions** drawn from subjects ranging from agronomy to world history.
 
 ### 1.2 The Answer Key Problem
 
 When evaluating multiple state-of-the-art models, we observed **systematic disagreement** between model answers and provided answer keys, with models frequently choosing the same "incorrect" answer. This pattern suggested potential issues with the answer keys themselves rather than model failures.
 
-**Key observation**: When four independent models (two from Google, two from Anthropic) all select the same answer that differs from the provided key, this indicates high probability of answer key error.
+**Key observation**: When four independent models (two from Google, two from Anthropic) all select the same answer that differs from the provided key, this indicates high probability of answer key error. Human in the loop is required to further check those datasets.
 
 ### 1.3 Research Questions
 
 1. **How many answer keys are potentially incorrect?**
-2. **Can we develop an objective, bias-free method to identify problematic questions?**
-3. **How does answer key quality affect model performance measurement?**
-4. **What is the optimal data quality threshold for fair model comparison?**
-5. **Does using an LLM judge introduce systematic bias?**
+2. **What are causes for those incorrect? translation quality? low resource language culture nuamce?**
+3. **Can we develop an objective, bias-free method to identify problematic questions?**
+4. **How does answer key quality affect model performance measurement?**
+5. **What is the optimal data quality threshold for fair model comparison?**
+6. **Does using an LLM judge introduce systematic bias?**
 
 ---
 
@@ -64,7 +65,7 @@ We evaluated four state-of-the-art large language models:
 - **Answer extraction**: "Concern All Answer" method (extracts from full response)
 - **Question format**: Multiple choice (A, B, C, D)
 - **Dataset size**: 670 questions across 67 subjects
-- **Language**: Bilingual Tibetan-Chinese
+- **Language**: Chinese to Tibetan translated (dataset in Tibetan)
 
 ### 2.3 Baseline Results
 
@@ -627,17 +628,8 @@ All heatmaps and multi-metric panels generated using:
 
 **Version**: 1.0
 **Date**: October 14, 2025
-**Authors**: TLUE Evaluation Team
-**Contact**: For questions about this methodology, please open an issue in the TLUE repository.
+**Authors**: aipmtdd, ClaudeCode, built on top of Original TLUE benchmarking
+**Contact**: For questions about this methodology, please open an issue in the repository.
 
 ---
 
-## License
-
-This methodology document is released under CC-BY 4.0. You are free to use, adapt, and build upon this work with attribution.
-
-**Suggested citation**:
-```
-TLUE Evaluation Team (2025). TLUE Evaluation Methodology: A Comprehensive Answer Key
-Validation Framework. GitHub repository: anthropics/TLUE
-```
