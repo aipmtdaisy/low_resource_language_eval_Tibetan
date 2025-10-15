@@ -217,7 +217,9 @@ For questions about this evaluation framework or methodology, please open an iss
 ## Acknowledgments
 
 This evaluation was conducted using:
+- **TLUE benchmark** (https://github.com/Vicentvankor/TLUE)
 - **Gemini 2.5 Pro/Flash** (Google)
 - **Claude Opus 4.1/Sonnet 4.5** (Anthropic)
 
-Special thanks to the TLUE benchmark creators for providing this important resource for Tibetan language AI evaluation.
+Special thanks to the TLUE benchmark creators for providing this important resource for Tibetan language model evaluation.
+
