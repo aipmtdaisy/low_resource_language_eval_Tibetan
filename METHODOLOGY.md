@@ -2,7 +2,10 @@
 
 ## Executive Summary
 
-This document describes the complete methodology used to evaluate large language models (Gemini 2.5 Pro/Flash and Claude Opus/Sonnet 4) on the Tibetan Language Understanding Evaluation (TLUE) benchmark(Original repository: https://github.com/Vicentvankor/TLUE , Original paper: https://arxiv.org/pdf/2503.12051 This doc has particular emphasis on **validating answer key quality** through two independent approaches: cross-model agreement analysis and LLM-as-judge validation.
+This document describes the complete methodology used to evaluate large language models (Gemini 2.5 Pro/Flash and Claude Opus/Sonnet 4) on the Tibetan Language Understanding Evaluation (TLUE) benchmark.
+1. Original repository: https://github.com/Vicentvankor/TLUE
+2. Original paper: https://arxiv.org/pdf/2503.12051
+This doc has particular emphasis on **validating answer key quality** through two independent approaches: cross-model agreement analysis and LLM-as-judge validation.
 
 Our findings reveal answer key quality issues potentially affecting 16-37% of questions, and demonstrate that filtering by data quality can improve measured accuracy by 13-37 percentage points. Critically, we also identified **substantial judge bias** (21.5× agreement ratio favoring same-family models) when using Gemini as judge. A deep dive on this potential bias is required to check if it's true bias or true accuracy, highlighting the importance of using agreement-based filtering as a complementary or primary validation method.
 
@@ -600,6 +603,7 @@ If you use this enhanced evaluation methodology, please cite both this work and 
 Original TLUE Repository: https://github.com/Vicentvankor/TLUE
 
 ---
+
 
 
 
