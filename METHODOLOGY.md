@@ -27,26 +27,25 @@ Our findings reveal answer key quality issues potentially affecting 16-37% of qu
 
 ### 1.1 Background
 
-This project aims to raise ##awareness about linguistic equity in AI and utimately improve model performance and inclusivity for underrepresented languages##. We believe that every language embodies the culture, identity, and wisdom of its communicty and no language should be left behind in the age of AI.
+This project aims to **raise awareness about linguistic equity in AI and utimately improve model performance and inclusivity for underrepresented languages**. We believe that every language embodies the culture, identity, and wisdom of its communicty and no language should be left behind in the age of AI.
 The original Tibetan Language Understanding Evaluation (TLUE) is a multiple-choice benchmark dataset designed to evaluate large language models' understanding of Tibetan-Chinese bilingual content across 67 academic subjects. The partially released dataset contains **670 questions** drawn from subjects ranging from agronomy to world history. This enhanced eval frame is built to measure model performance on handling Tibetan language and validate the groundtruth datasets.  
 
 ### 1.2 The Answer Key Problem
 
-When evaluating multiple state-of-the-art models, we observed **systematic disagreement** between model answers and provided answer keys, with models frequently choosing the same "incorrect" answer. This pattern suggested potential issues with the answer keys themselves rather than model failures.
+When evaluating multiple state-of-the-art models using TLUE, we observed **systematic disagreement** between model answers and provided answer keys, with models frequently choosing the same "incorrect" answer. This pattern suggested potential issues with the answer keys themselves rather than model failures.
 
 **Key observation**: When four independent models (two from Google, two from Anthropic) all select the same answer that differs from the provided key, this indicates high probability of answer key error. Human in the loop is required to further check those datasets.
 
 ### 1.3 Research Questions
 
 1. **How many answer keys are potentially incorrect?**
-2. **What are causes for those incorrect? translation quality? low resource language culture nuamce?**
+2. **What are causes for those incorrect? human errors? culture nuance lost in translation? or something else**
 3. **Can we develop an objective, bias-free method to identify problematic questions?**
 4. **How does answer key quality affect model performance measurement?**
 5. **What is the optimal data quality threshold for fair model comparison?**
 6. **Does using an LLM judge introduce systematic bias?**
 
 ---
-
 ## 2. Initial Model Evaluation
 
 ### 2.1 Models Evaluated
@@ -84,7 +83,7 @@ We evaluated four state-of-the-art large language models:
 1. **High response rates** (96-98%) indicate models can process the content
 2. **Large performance gap** between Gemini and Claude families (~16pp)
 3. **Gemini models outperform Claude** across all subjects
-4. However, systematic analysis revealed this gap may be inflated by answer key quality issues
+4. However, systematic analysis revealed this gap may be inflated by answer key quality issues. Answer key valiadation is required.
 
 ---
 
@@ -128,7 +127,7 @@ def categorize_question(gemini_pro, gemini_flash, claude_opus, claude_sonnet, an
 
 ### 3.2 Method 2: LLM-as-Judge Validation
 
-**Philosophy**: Use a strong LLM (Gemini 2.5 Pro) to independently verify answer keys by analyzing question content, all answer choices, and provided rationale.
+**Philosophy**: Instruct a LLM-as-judge (Gemini 2.5 Pro) to independently verify answer keys by analyzing question content, all answer choices, and provided rationale.
 
 **Implementation**:
 ```python
@@ -159,7 +158,6 @@ Task:
 | Questions flagged | 107 (Tier 1-2) | 130 |
 | Bias-free | ✅ Yes (uses consensus) | ⚠️ No (21.5× bias detected) |
 | Interpretability | ✅ High (counts visible) | ⚠️ Moderate (black box) |
-| Computational cost | ✅ Low (uses existing data) | ❌ High (requires API calls) |
 | Independence | ✅ Model-agnostic | ❌ Uses Gemini judge |
 
 **Key insight**: Cross-model agreement provides a more objective, bias-free validation method compared to LLM-as-judge.
@@ -245,7 +243,7 @@ Union (∪):              177 (26.4% of dataset)
 ```
 
 **Interpretation**:
-- 56% of high-confidence model disagreements confirmed by judge
+- 56% of high-confidence model disagreements confirmed by the llm-as-judge
 - 54% of judge disputes not supported by strong model consensus (potential bias)
 - Union approach maximizes coverage while controlling for judge bias
 
@@ -253,11 +251,10 @@ Union (∪):              177 (26.4% of dataset)
 
 **Why exclude rather than correct?**
 
-1. **Uncertainty**: Even with consensus, we cannot be 100% certain which answer is correct
-2. **Conservative approach**: Excluding ambiguous questions ensures fair comparison
-3. **Research integrity**: Manually changing answer keys without ground truth is inappropriate
+1. **Conservative approach**: Excluding ambiguous questions ensures fair comparison quickly
+3. **Research integrity**: Manually changing answer keys without ground truth review by experts is inappropriate
 4. **Transparency**: Exclusion is auditable and reversible
-5. **Human Validation Cost**: Require human expert to validate the ground truth (Fast followup)
+5. **Human Validation Cost**: Require human experts to validate the ground truth (Fast followup)
 
 ---
 
@@ -311,7 +308,6 @@ We computed **Wilson score 95% confidence intervals** for all metrics to account
 **Why Wilson score?**
 - More accurate than normal approximation for extreme proportions
 - Maintains proper coverage for small samples
-- Recommended by statisticians for binomial proportions
 
 **Implementation**:
 ```python
@@ -368,7 +364,7 @@ We used **two-proportion z-tests** to compare models:
 ### 8.1 Key Findings
 
 #### Finding 1: Answer Key Quality Issues
-**16-37% of questions have potentially incorrect answer keys** depending on confidence threshold:
+**~16% of questions show potentially incorrect answer keys** depending on confidence threshold:
 - High confidence (Tier 1-2): 107 questions (16.0%)
 - Medium confidence (Tier 1-3): 157 questions (23.4%)
 - Low confidence (Tier 1-4): 251 questions (37.5%)
@@ -383,16 +379,16 @@ Filtering by data quality improves measured accuracy by **1-19 percentage points
 Gemini judge shows **21.5× self-agreement bias**:
 - Agrees with Gemini models 80.8% vs Claude models 38.5%
 - When families disagree, judge favors Gemini 21.5× more often
-- **Not suitable as sole validation method**
+- **Not suitable as sole validation method. Require cross model judge evaluation to detect true bias**
 
 #### Finding 4: Cross-Model Agreement Provides Objective Validation
 Agreement-based tiers offer:
-- ✅ **Bias-free**: Based on consensus across model families
-- ✅ **Transparent**: Agreement counts are auditable
-- ✅ **Efficient**: Uses existing evaluation data
-- ✅ **Interpretable**: Clear confidence levels (Tier 1 > Tier 2 > Tier 3)
+- **Bias-free**: Based on consensus across model families
+- **Transparent**: Agreement counts are auditable
+- **Efficient**: Uses existing evaluation data
+- **Interpretable**: Clear confidence levels (Tier 1 > Tier 2 > Tier 3)
 
-#### Finding 5: Relative Model Rankings Preserved
+#### Finding 5: Relative Model Rankings Remained The Same
 Across all filtering scenarios, **Gemini 2.5 Pro remains strongest**:
 - Baseline: Gemini Pro (68.0%) > Flash (66.3%) > Opus (53.2%) > Sonnet (50.5%)
 - Tier 1-2: Gemini Pro (79.1%) > Flash (77.7%) > Opus (62.3%) > Sonnet (58.8%)
@@ -406,69 +402,47 @@ Do not report a single baseline accuracy. Instead, report:
 - **Tier 1-2 Only** (563 questions): **Primary metric** for fair comparison
 - **Tier 1-2 ∪ Judge** (493 questions): Highest quality subset
 
-**Rationale**: Single-number reporting obscures answer key quality issues and inflates apparent model differences.
+**Rationale**: Single-number reporting obscures answer key quality issues especially in traslated dataset and inflates apparent model differences.
 
-#### Recommendation 2: **Use Cross-Model Agreement as Primary Validation**
-Prioritize agreement-based filtering over LLM judge validation:
+#### Recommendation 2: **Use Cross-Model Agreement as a Cost Effective Primary Validation**
+Prioritize agreement-based filtering over single LLM judge validation:
 1. Start with Tier 1-2 filtering (high confidence, bias-free)
 2. Optionally add judge validation for union approach
-3. Never use judge validation alone
-
-**Rationale**: Agreement-based validation is objective, transparent, and free from self-agreement bias.
+3. Never use judge validation from a single model familly alone
+4. Double review answer keys that show high model agreenments on "incorrect" answer with human experts
+5. Detect potential nuance introduced by translation
 
 #### Recommendation 3: **Report Confidence Intervals**
 Always report Wilson score 95% confidence intervals:
 ```
 Gemini 2.5 Pro: 79.1% [75.6%, 82.2%] on Tier 1-2 Only (n=563)
 ```
-
-**Rationale**: CIs communicate uncertainty and enable proper statistical comparison.
-
+- **Expand eval datasets**: Current released TLUE is a small size dataset, require larger datasets to objectively evaluate model performance.
 #### Recommendation 4: **Create Answer Key Review Process**
 Manually review Tier 1-2 questions with domain experts:
 - Tier 1 (33 questions): All 4 models agree → Highest priority review
 - Tier 2 (74 questions): 3 models agree → High priority review
 - Document corrections and rationale
-
 **Rationale**: While we cannot automatically correct answers, systematic disagreement warrants expert review.
 
-#### Recommendation 5: **Expand to Additional Models**
-Include more model families to strengthen consensus validation:
-- Add GPT-5 family (OpenAI)
-- Add other latest open source models
-
-**Rationale**: More independent models increase confidence in consensus answers.
-
-### 8.3 Recommendations for Model Developers
+### 8.3 Recommendations for Model Team
 
 #### For Gemini
 1. **Primary strength confirmed**: Gemini 2.5 Pro achieves 79.1% on high-quality subset (Tier 1-2)
 2. **Gap analysis**: 20.9% of questions still incorrect on cleaned dataset
 3. **Focus areas**: Analyze Tier 1-2 errors for model improvement opportunities
 4. **Bias awareness**: Recognize judge bias when using Gemini for validation
+5. **Gap awareness**: Recognize the model's performance gap between top used languages vs low reource language
 
 #### For Claude
 1. **Performance gap**: Claude Opus 4.1 achieves 62.3% vs Gemini's 79.1% on Tier 1-2
-2. **Relative gap reduced**: Gap narrows from 16.8pp (baseline) to 16.8pp (Tier 1-2), but remains significant
-3. **Root cause analysis**: Investigate whether gap is due to:
+2. **Root cause analysis**: Investigate whether gap is due to:
    - Tibetan language understanding
    - Chinese language understanding
    - Bilingual reasoning
    - Multiple-choice test-taking strategies or others
-4. **Strength identification**: Analyze questions where Claude outperforms Gemini
-
-### 8.4 Recommendations for Benchmark Users
-
-#### For Researchers
-1. **Comparison**: When comparing to other benchmarks, note data quality filtering
-2. **Transparency**: Report exclusion criteria and counts
-
-#### For Model Evaluators
-1. **Balanced reporting**: Report multiple scenarios to show robustness
-2. **Statistical testing**: Use two-proportion z-tests for significance
-3. **Confidence intervals**: Always include 95% CIs
-4. **Bias awareness**: Do not use same-family LLM as judge for validation
-5. **Expand eval datasets**: Current released TLUE is a small size dataset, require larger datasets to objectively evaluate model performance.
+3. **Strength identification**: Recognize questions where Claude outperforms Gemini
+4. **Gap awareness**: Recognize the model's performance gap between top used languages vs low reource language
 
 ---
 
@@ -477,43 +451,38 @@ Include more model families to strengthen consensus validation:
 ### 9.1 Current Limitations
 
 #### Limitation 1: No Ground Truth Verification
-- We infer answer key errors from model agreement, but haven't verified through expert review yet
+- We infer answer key errors from model agreement, but haven't verified by human expert review yet
 - Consensus may be wrong if all models share the same systematic misunderstanding
-- **Mitigation**: Use tiered confidence levels; higher tiers = higher confidence
 
 #### Limitation 2: Limited Model Diversity and Evaluation Dataset
 - Only 2 model families (Gemini, Claude) used for consensus
 - Agreement may be stronger with more diverse model families
 - Dataset is small as TLUE only released a small subset of the full eval test set
-- **Future work**: Add GPT-5, Llama, Qwen families etc. Evaluate with full datasets
 
 #### Limitation 3: Language-Specific Bias Unclear
 - Cannot determine if judge bias is language-specific or general
 - Tibetan+Chinese bilingual context may amplify or reduce bias
 - Cross model llm-as-judge evaluation is not performed
-- **Future work**: Test judge bias on monolingual subsets
 
 #### Limitation 4: No Subject-Level Analysis of Filtering Impact
-- Current analysis is dataset-level only
+- Current analysis is dataset-level only. While we have subject-level result, the dataset per subject is too small to make any conclusion
 - Different subjects may have different answer key quality
-- **Future work**: Analyze per-subject improvement from filtering
 
 #### Limitation 5: Manual Review Not Performed
 - Tier 1-2 questions identified but not manually corrected
 - Cannot provide "corrected" answer keys without expert review
-- **Recommendation**: TLUE maintainers should conduct expert review
 
 ### 9.2 Future Work
 1. **Expert review of Tier 1-2 questions**: Recruit Tibetan language experts to review 107 high-confidence disagreements
 2. **Subject-level analysis**: Compute per-subject improvement from filtering
 3. **Cross-benchmark comparison**: Compare TLUE filtering impact to MMLU, C-Eval filtering
-4. **Expand model coverage**: Add GPT-5, Llama, Qwen to consensus validation
+4. **Expand model coverage**: Add GPT-5 and other models to consensus validation
 5. **Judge bias across languages**: Test if bias exists in monolingual (Tibetan-only, Chinese-only) subsets
 6. **Test GPT-5 as judge**: Compare judge bias between Gemini and GPT-5 judges
 7. **Community validation platform**: Build platform for crowdsourced expert for low resource language to review flagged questions
 8. **Dynamic benchmark**: Create versioned enhanced TLUE eval frame with continuous quality improvement based on model feedback
 9. **Automated bias detection**: Develop tools to automatically detect judge bias in evaluation workflows
-
+10 **Expand eval datasets**: Current released TLUE is a small size dataset, require larger datasets to objectively evaluate model performance.
 ---
 
 ## 10. Conclusion
@@ -552,10 +521,10 @@ This study presents a comprehensive methodology for evaluating answer key qualit
 This work demonstrates that:
 
 1. **Answer keys should not be assumed correct**: Even curated benchmarks contain errors
-2. **Model consensus is a powerful validation signal**: Systematic disagreement indicates likely errors
+2. **Model consensus might be a powerful validation signal**: Systematic disagreement indicates likely errors
 3. **LLM judges are not neutral**: Self-agreement bias must be measured and controlled
-4. **Multiple filtering scenarios should be reported**: Single-number reporting obscures data quality issues
-5. **Statistical rigor is essential**: Confidence intervals and significance tests prevent over-interpretation
+4. **Multiple filtering scenarios could be reported**: Single-number reporting obscures data quality issues
+5. **Statistical rigor is needed**: Confidence intervals and significance tests prevent over-interpretation
 
 ---
 
@@ -631,6 +600,7 @@ If you use this enhanced evaluation methodology, please cite both this work and 
 Original TLUE Repository: https://github.com/Vicentvankor/TLUE
 
 ---
+
 
 
 
