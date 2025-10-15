@@ -1,4 +1,4 @@
-# TLUE Evaluation Methodology: A Comprehensive Answer Key Validation Framework
+# Enhanced TLUE Methodology: A Comprehensive Answer Key Validation Framework
 
 ## Executive Summary
 
@@ -27,7 +27,8 @@ Our findings reveal answer key quality issues potentially affecting 16-37% of qu
 
 ### 1.1 Background
 
-The original Tibetan Language Understanding Evaluation (TLUE) is a multiple-choice benchmark dataset designed to evaluate AI models' understanding of Tibetan-Chinese bilingual content across 67 academic subjects. The partially released dataset contains **670 questions** drawn from subjects ranging from agronomy to world history.
+This project aims to raise ##awareness about linguistic equity in AI and utimately improve model performance and inclusivity for underrepresented languages##. We believe that every language embodies the culture, identity, and wisdom of its communicty and no language should be left behind in the age of AI.
+The original Tibetan Language Understanding Evaluation (TLUE) is a multiple-choice benchmark dataset designed to evaluate large language models' understanding of Tibetan-Chinese bilingual content across 67 academic subjects. The partially released dataset contains **670 questions** drawn from subjects ranging from agronomy to world history. This enhanced eval frame is built to measure model performance on handling Tibetan language and validate the groundtruth datasets.  
 
 ### 1.2 The Answer Key Problem
 
@@ -630,5 +631,6 @@ If you use this enhanced evaluation methodology, please cite both this work and 
 Original TLUE Repository: https://github.com/Vicentvankor/TLUE
 
 ---
+
 
 
