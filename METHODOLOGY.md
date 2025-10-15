@@ -2,7 +2,7 @@
 
 ## Executive Summary
 
-This document describes the complete methodology used to evaluate large language models (Gemini 2.5 Pro/Flash and Claude Opus/Sonnet 4) on the Tibetan Language Understanding Evaluation (TLUE) benchmark.
+This document describes the enhanced methodology used to evaluate large language models (Gemini 2.5 Pro/Flash and Claude Opus/Sonnet 4) on the Tibetan Language Understanding Evaluation (TLUE) benchmark.
 1. Original repository: https://github.com/Vicentvankor/TLUE
 2. Original paper: https://arxiv.org/pdf/2503.12051
 
@@ -604,6 +604,7 @@ If you use this enhanced evaluation methodology, please cite both this work and 
 Original TLUE Repository: https://github.com/Vicentvankor/TLUE
 
 ---
+
 
 
 
