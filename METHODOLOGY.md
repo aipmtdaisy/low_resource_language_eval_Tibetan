@@ -93,7 +93,7 @@ To address answer key quality concerns, we developed **two independent validatio
 
 ### 3.1 Method 1: Cross-Model Agreement Analysis
 
-**Philosophy**: When multiple independent models from different providers agree on an answer that differs from the key, the consensus answer is likely correct.
+**Hypothesis**: When more than 3 independent models from different providers agree on an answer that differs from the key, the consensus answer is likely correct.
 
 **Implementation**:
 ```python
@@ -117,10 +117,10 @@ def categorize_question(gemini_pro, gemini_flash, claude_opus, claude_sonnet, an
 ```
 
 **Tiers of confidence**:
-- **Tier 1** (Highest): All 4 models agree → 33 questions (4.9%)
-- **Tier 2** (High): 3 models agree → 74 questions (11.0%)
-- **Tier 3** (Medium): Cross-brand pair agrees → 50 questions (7.5%)
-- **Tier 4** (Low): Same-brand only → 94 questions (14.0%)
+- **Tier 1** (Highest): All 4 models agree but different from key → 33 questions (4.9%)
+- **Tier 2** (High): 3 models agree but different from key → 74 questions (11.0%)
+- **Tier 3** (Medium): Cross-brand pair agrees but different from key → 50 questions (7.5%)
+- **Tier 4** (Low): Same-brand only but different from key → 94 questions (14.0%)
 - **Tier 5**: No consensus → 111 questions (16.6%)
 
 **Total potentially problematic**: Tier 1-2 = **107 questions (16.0%)**
@@ -132,7 +132,7 @@ def categorize_question(gemini_pro, gemini_flash, claude_opus, claude_sonnet, an
 **Implementation**:
 ```python
 judge_prompt = """
-You are validating answer keys for a Tibetan-Chinese assessment.
+You are validating answer keys for a Tibetan assessment.
 
 Question: {question}
 Options: A) {option_a} B) {option_b} C) {option_c} D) {option_d}
@@ -142,7 +142,7 @@ Rationale: {explanation}
 Task:
 1. Is the provided answer key correct? (True/False)
 2. If False, what is the correct answer?
-3. Provide explanation
+3. Provide explanation/Reasoning
 """
 ```
 
@@ -211,7 +211,7 @@ For the 130 questions where judge marked the answer key as incorrect, we analyze
 The 21.5× bias ratio indicates substantial self-agreement bias where:
 - Gemini judge systematically favors Gemini models' answers
 - This bias inflates Gemini's apparent performance on judge-validated subsets
-- Judge validation is **not suitable as sole validation method**
+- Judge validation is **not suitable as sole validation method** unless the human validation agrees to judge validation
 
 **Recommendation**: Use cross-model agreement as primary validation, with judge providing supplementary validation only when combined with agreement-based filtering (union approach).
 
@@ -235,7 +235,7 @@ We evaluated models under multiple data quality scenarios:
 
 ### 5.2 Set Relationship Analysis
 
-**Overlap between methods**:
+**Overlap between methods (model agreement vs llm-as-judge)**:
 ```
 Tier 1-2 questions:     107
 Judge disputed:         130
@@ -256,6 +256,7 @@ Union (∪):              177 (26.4% of dataset)
 2. **Conservative approach**: Excluding ambiguous questions ensures fair comparison
 3. **Research integrity**: Manually changing answer keys without ground truth is inappropriate
 4. **Transparency**: Exclusion is auditable and reversible
+5. **Human Validation Cost**: Require human expert to validate the ground truth (Fast followup)
 
 ---
 
@@ -365,7 +366,7 @@ We used **two-proportion z-tests** to compare models:
 
 ### 8.1 Key Findings
 
-#### Finding 1: Substantial Answer Key Quality Issues
+#### Finding 1: Answer Key Quality Issues
 **16-37% of questions have potentially incorrect answer keys** depending on confidence threshold:
 - High confidence (Tier 1-2): 107 questions (16.0%)
 - Medium confidence (Tier 1-3): 157 questions (23.4%)
@@ -432,45 +433,41 @@ Manually review Tier 1-2 questions with domain experts:
 
 #### Recommendation 5: **Expand to Additional Models**
 Include more model families to strengthen consensus validation:
-- Add GPT-4 family (OpenAI)
-- Add Llama 3 family (Meta)
-- Add Qwen family (Alibaba)
+- Add GPT-5 family (OpenAI)
+- Add other latest open source models
 
 **Rationale**: More independent models increase confidence in consensus answers.
 
 ### 8.3 Recommendations for Model Developers
 
-#### For Gemini Team
+#### For Gemini
 1. **Primary strength confirmed**: Gemini 2.5 Pro achieves 79.1% on high-quality subset (Tier 1-2)
 2. **Gap analysis**: 20.9% of questions still incorrect on cleaned dataset
 3. **Focus areas**: Analyze Tier 1-2 errors for model improvement opportunities
 4. **Bias awareness**: Recognize judge bias when using Gemini for validation
 
-#### For Claude Team
+#### For Claude
 1. **Performance gap**: Claude Opus 4.1 achieves 62.3% vs Gemini's 79.1% on Tier 1-2
 2. **Relative gap reduced**: Gap narrows from 16.8pp (baseline) to 16.8pp (Tier 1-2), but remains significant
 3. **Root cause analysis**: Investigate whether gap is due to:
    - Tibetan language understanding
    - Chinese language understanding
    - Bilingual reasoning
-   - Multiple-choice test-taking strategies
+   - Multiple-choice test-taking strategies or others
 4. **Strength identification**: Analyze questions where Claude outperforms Gemini
 
 ### 8.4 Recommendations for Benchmark Users
 
 #### For Researchers
-1. **Citation**: When citing TLUE results, specify which scenario:
-   ```
-   "Gemini 2.5 Pro achieved 79.1% on TLUE (Tier 1-2 filtered, n=563)"
-   ```
-2. **Comparison**: When comparing to other benchmarks, note data quality filtering
-3. **Transparency**: Report exclusion criteria and counts
+1. **Comparison**: When comparing to other benchmarks, note data quality filtering
+2. **Transparency**: Report exclusion criteria and counts
 
 #### For Model Evaluators
 1. **Balanced reporting**: Report multiple scenarios to show robustness
 2. **Statistical testing**: Use two-proportion z-tests for significance
 3. **Confidence intervals**: Always include 95% CIs
 4. **Bias awareness**: Do not use same-family LLM as judge for validation
+5. **Expand eval datasets**: Current released TLUE is a small size dataset, require larger datasets to objectively evaluate model performance.
 
 ---
 
@@ -479,18 +476,20 @@ Include more model families to strengthen consensus validation:
 ### 9.1 Current Limitations
 
 #### Limitation 1: No Ground Truth Verification
-- We infer answer key errors from model agreement, but cannot verify without expert review
+- We infer answer key errors from model agreement, but haven't verified through expert review yet
 - Consensus may be wrong if all models share the same systematic misunderstanding
 - **Mitigation**: Use tiered confidence levels; higher tiers = higher confidence
 
-#### Limitation 2: Limited Model Diversity
+#### Limitation 2: Limited Model Diversity and Evaluation Dataset
 - Only 2 model families (Gemini, Claude) used for consensus
 - Agreement may be stronger with more diverse model families
-- **Future work**: Add GPT-4, Llama 3, Qwen families
+- Dataset is small as TLUE only released a small subset of the full eval test set
+- **Future work**: Add GPT-5, Llama, Qwen families etc. Evaluate with full datasets
 
 #### Limitation 3: Language-Specific Bias Unclear
 - Cannot determine if judge bias is language-specific or general
 - Tibetan+Chinese bilingual context may amplify or reduce bias
+- Cross model llm-as-judge evaluation is not performed
 - **Future work**: Test judge bias on monolingual subsets
 
 #### Limitation 4: No Subject-Level Analysis of Filtering Impact
@@ -504,21 +503,15 @@ Include more model families to strengthen consensus validation:
 - **Recommendation**: TLUE maintainers should conduct expert review
 
 ### 9.2 Future Work
-
-#### Short-term (Next 3 months)
 1. **Expert review of Tier 1-2 questions**: Recruit Tibetan language experts to review 107 high-confidence disagreements
 2. **Subject-level analysis**: Compute per-subject improvement from filtering
 3. **Cross-benchmark comparison**: Compare TLUE filtering impact to MMLU, C-Eval filtering
-
-#### Medium-term (Next 6 months)
-4. **Expand model coverage**: Add GPT-4, Llama 3, Qwen to consensus validation
+4. **Expand model coverage**: Add GPT-5, Llama, Qwen to consensus validation
 5. **Judge bias across languages**: Test if bias exists in monolingual (Tibetan-only, Chinese-only) subsets
-6. **Test GPT-4 as judge**: Compare judge bias between Gemini and GPT-4 judges
-
-#### Long-term (Next year)
-7. **Automated bias detection**: Develop tools to automatically detect judge bias in evaluation workflows
-8. **Community validation platform**: Build platform for crowdsourced expert review of flagged questions
-9. **Dynamic benchmark**: Create versioned TLUE with continuous quality improvement based on model feedback
+6. **Test GPT-5 as judge**: Compare judge bias between Gemini and GPT-5 judges
+7. **Community validation platform**: Build platform for crowdsourced expert for low resource language to review flagged questions
+8. **Dynamic benchmark**: Create versioned enhanced TLUE eval frame with continuous quality improvement based on model feedback
+9. **Automated bias detection**: Develop tools to automatically detect judge bias in evaluation workflows
 
 ---
 
@@ -529,7 +522,7 @@ Include more model families to strengthen consensus validation:
 This study presents a comprehensive methodology for evaluating answer key quality in the Tibetan Language Understanding Evaluation (TLUE) benchmark through dual validation methods: cross-model agreement analysis and LLM-as-judge validation.
 
 **Key contributions**:
-1. **Identified substantial answer key quality issues** (16-37% of questions)
+1. **Identified potential answer key quality issues** (16-37% of questions)
 2. **Quantified impact of data quality** on measured performance (9-19pp improvement)
 3. **Detected and measured judge bias** (21.5× self-agreement ratio)
 4. **Developed tier-based filtering framework** providing objective, bias-free validation
@@ -543,17 +536,13 @@ This study presents a comprehensive methodology for evaluating answer key qualit
 4. **Tier 1-2 filtering is recommended**: Provides best balance of quality (high confidence) and coverage (563 questions)
 5. **Model rankings are robust**: Gemini 2.5 Pro remains strongest across all filtering scenarios
 
-### 10.3 Practical Impact
+### 10.3 Key Impact
 
-**For TLUE benchmark**:
-- Recommended reporting: Baseline (670 Q) + Tier 1-2 Only (563 Q) + Tier 1-2 ∪ Judge (493 Q)
-- Expected citation: "Model achieved X% on TLUE (Tier 1-2, n=563)"
-
-**For Gemini team**:
+**For Gemini**:
 - True performance: 79.1% [75.6%, 82.2%] on high-quality subset
 - Advantage over Claude: 16.8pp (statistically significant, p<0.001)
 
-**For Claude team**:
+**For Claude**:
 - True performance: 62.3% [58.2%, 66.3%] on high-quality subset
 - Performance gap reduced but remains significant when using unbiased validation
 
@@ -566,32 +555,6 @@ This work demonstrates that:
 3. **LLM judges are not neutral**: Self-agreement bias must be measured and controlled
 4. **Multiple filtering scenarios should be reported**: Single-number reporting obscures data quality issues
 5. **Statistical rigor is essential**: Confidence intervals and significance tests prevent over-interpretation
-
-### 10.5 Final Recommendation
-
-**We recommend TLUE adopt the following reporting standard**:
-
-```
-Model Performance on TLUE v1.0:
-
-Baseline (670 questions, no filtering):
-- Gemini 2.5 Pro: 68.0% [64.4%, 71.4%]
-- Claude Opus 4.1: 53.2% [49.4%, 57.0%]
-
-Tier 1-2 Only (563 questions, high-confidence filtering):
-- Gemini 2.5 Pro: 79.1% [75.6%, 82.2%] ⭐ RECOMMENDED METRIC
-- Claude Opus 4.1: 62.3% [58.2%, 66.3%]
-
-Tier 1-2 ∪ Judge (493 questions, highest quality):
-- Gemini 2.5 Pro: 87.1% [83.9%, 89.8%]
-- Claude Opus 4.1: 63.9% [59.6%, 68.1%]
-
-Statistical significance: All pairwise differences p < 0.001 (***)
-Validation method: Cross-model agreement (bias-free)
-Confidence intervals: Wilson score 95% CI
-```
-
-This transparent, multi-scenario reporting enables fair model comparison while acknowledging data quality uncertainty.
 
 ---
 
@@ -667,4 +630,5 @@ If you use this enhanced evaluation methodology, please cite both this work and 
 Original TLUE Repository: https://github.com/Vicentvankor/TLUE
 
 ---
+
 
