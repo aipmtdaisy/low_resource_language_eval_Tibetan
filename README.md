@@ -1,10 +1,26 @@
-# TLUE: Tibetan Language Understanding Evaluation
+# Enhance eval tool built on top of TLUE: Tibetan Language Understanding Evaluation
 
-A comprehensive benchmark for evaluating AI models on Tibetan-Chinese bilingual multiple-choice questions with rigorous answer key validation methodology.
+A comprehensive benchmark frame for evaluating large language models on Tibetan multiple-choice questions with rigorous answer key validation methodology and model bias detection tool.
+
+## Acknowledgments
+
+This project builds upon the TLUE (Tibetan Language Understanding Evaluation) benchmark. If you use this repository, please cite the original TLUE paper:
+```bibtex
+@article{gao2025tlue,
+  title={TLUE: A Tibetan Language Understanding Evaluation Benchmark},
+  author={Gao, Fan and Huang, Cheng and Tashi, Nyima and Wang, Xiangxiang and others},
+  journal={arXiv preprint arXiv:2503.12051},
+  year={2025},
+  url={https://arxiv.org/abs/2503.12051},
+  doi={10.48550/arXiv.2503.12051}
+}
+```
+
+Original TLUE Repository: https://github.com/Vicentvankor/TLUE
 
 ## Overview
 
-TLUE (Tibetan Language Understanding Evaluation) is a research project that evaluates state-of-the-art large language models on their understanding of Tibetan-Chinese bilingual content. The Ti-MMLU subset contains **670 questions** across **67 academic subjects**, ranging from agronomy to world history.
+This eval frame is built on top of the original TLUE (Tibetan Language Understanding Evaluation) is a research project that evaluates state-of-the-art large language models on their understanding of Tibetan-Chinese bilingual content. The partially realeased Ti-MMLU subset contains **670 questions** across **67 academic subjects**, ranging from agronomy to world history.
 
 ### What's New in This Enhanced Version
 
@@ -14,7 +30,7 @@ This repository extends the [original TLUE benchmark](https://github.com/Vicentv
 - Ti-MMLU dataset (670 questions, 67 subjects)
 - Basic model evaluation framework
 - Direct and comprehensive answer extraction methods
-- Support for Tibetan and English option recognition
+- Support for Tibetan and English option recognition etc.
 
 **The enhancements added:**
 - **Answer Key Validation** (16-37% of questions flagged as potentially incorrect)
@@ -112,11 +128,11 @@ python analyze_cross_model_agreement_all_questions.py
 | Claude Opus 4.1 | 62.3% [58.2%, 66.3%] |
 | Claude Sonnet 4.5 | 58.8% |
 
-**Filtering improves measured accuracy by 9-19 percentage points** by excluding questions with likely answer key errors.
+**Filtering improves measured accuracy by 9-19 percentage points** by excluding questions with likely answer key errors (more than 3 models agreed on the same answer which is different from the provided answer key).
 
 ## Methodology
 
-Our comprehensive validation methodology includes:
+Our validation methodology includes:
 
 1. **Cross-Model Agreement Analysis**: Identifies questions where multiple independent models agree on an answer different from the provided key
 2. **LLM-as-Judge Validation**: Uses Gemini 2.5 Pro to verify answer keys with bias detection
@@ -176,26 +192,29 @@ python test_visualization_utils.py
 
 1. **16-37% of questions have potentially incorrect answer keys** (depending on confidence threshold)
 2. **Data quality significantly affects measured performance** (+9 to +19 percentage points improvement)
-3. **LLM judges exhibit substantial bias** (21.5× self-agreement ratio for Gemini judge)
+3. **LLM judges exhibit substantial bias** (21.5× self-agreement ratio for Gemini judge) or Gemini model as a judge indeed show much higher accuracy (require human validation)
 4. **Cross-model agreement provides objective validation** (bias-free, transparent, efficient)
 5. **Model rankings are preserved across filtering scenarios**
 
 ## Citation
 
-If you use this benchmark or methodology in your research, please cite:
-
+This project builds upon the TLUE (Tibetan Language Understanding Evaluation) benchmark. If you use this repository, please cite the original TLUE paper:
 ```bibtex
-@misc{tlue2025,
-  title={TLUE Evaluation Methodology: A Comprehensive Answer Key Validation Framework},
-  author={TLUE Evaluation Team},
+@article{gao2025tlue,
+  title={TLUE: A Tibetan Language Understanding Evaluation Benchmark},
+  author={Gao, Fan and Huang, Cheng and Tashi, Nyima and Wang, Xiangxiang and others},
+  journal={arXiv preprint arXiv:2503.12051},
   year={2025},
-  howpublished={https://arxiv.org/pdf/2503.12051}
+  url={https://arxiv.org/abs/2503.12051},
+  doi={10.48550/arXiv.2503.12051}
 }
 ```
 
+Original TLUE Repository: https://github.com/Vicentvankor/TLUE
+
 ## License
 
-This project is released under the MIT License. The methodology document is released under CC-BY 4.0.
+This original TLUE project is released under the MIT License. The methodology document is released under CC-BY 4.0.
 
 ## Contributing
 
@@ -222,4 +241,5 @@ This evaluation was conducted using:
 - **Claude Opus 4.1/Sonnet 4.5** (Anthropic)
 
 Special thanks to the TLUE benchmark creators for providing this important resource for Tibetan language model evaluation.
+
 
