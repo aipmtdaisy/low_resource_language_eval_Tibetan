@@ -1,0 +1,58 @@
+# API Keys and Secrets
+TLUE/script/config.yaml
+config.yaml
+*.env
+.env
+.env.*
+
+# API key patterns
+*api_key*
+*apikey*
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info/
+dist/
+build/
+
+# Model outputs and results
+model_answer/
+*_out.jsonl
+*_eval_res/
+
+# Logs
+*.log
+logs/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Claude AI Tool Configuration
+.claude/
+
+# Generated Analysis Results
+*.csv
+*.png
+*.pdf
+*_summary.json
+*_results.txt
+*_report.txt
+
+# Truncated/Processed Responses
+*_truncated.jsonl
+truncated_responses/
+
+# Archive/Deprecated Files
+archive/
