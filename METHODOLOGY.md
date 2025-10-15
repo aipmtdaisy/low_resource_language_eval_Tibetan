@@ -628,8 +628,43 @@ All heatmaps and multi-metric panels generated using:
 
 **Version**: 1.0
 **Date**: October 14, 2025
-**Authors**: aipmtdd, ClaudeCode, built on top of Original TLUE benchmarking
+**Authors**: aipmtdaisy (with Claude Code assistance)
+**Built Upon**: Original TLUE benchmark by Gao et al. (2025)
 **Contact**: For questions about this methodology, please open an issue in the repository.
+
+---
+
+## Citation
+
+If you use this enhanced evaluation methodology, please cite both this work and the original TLUE benchmark:
+
+**This Enhanced Framework:**
+```bibtex
+@misc{aipmtdaisy2025enhanced_tlue,
+  title={Enhanced TLUE Evaluation Framework: Answer Key Validation and Bias Detection for Low-Resource Language Benchmarks},
+  author={aipmtdaisy},
+  year={2025},
+  month={10},
+  howpublished={\url{https://github.com/aipmtdaisy/low_resource_language_eval_Tibetan}},
+  note={Enhanced evaluation methodology built upon the TLUE benchmark (Gao et al., 2025).
+        Contributions include cross-model agreement analysis, LLM judge bias detection,
+        tier-based filtering framework, and statistical validation tools.}
+}
+```
+
+**Original TLUE Benchmark:**
+```bibtex
+@article{gao2025tlue,
+  title={TLUE: A Tibetan Language Understanding Evaluation Benchmark},
+  author={Gao, Fan and Huang, Cheng and Tashi, Nyima and Wang, Xiangxiang and others},
+  journal={arXiv preprint arXiv:2503.12051},
+  year={2025},
+  url={https://arxiv.org/abs/2503.12051},
+  doi={10.48550/arXiv.2503.12051}
+}
+```
+
+Original TLUE Repository: https://github.com/Vicentvankor/TLUE
 
 ---
 

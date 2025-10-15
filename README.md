@@ -198,7 +198,27 @@ python test_visualization_utils.py
 
 ## Citation
 
-This project builds upon the TLUE (Tibetan Language Understanding Evaluation) benchmark. If you use this repository, please cite the original TLUE paper:
+### Citing This Enhanced Framework
+
+If you use our enhanced evaluation methodology (answer key validation, bias detection, tier-based filtering, or statistical tools), please cite:
+
+```bibtex
+@misc{aipmtdaisy2025enhanced_tlue,
+  title={Enhanced TLUE Evaluation Framework: Answer Key Validation and Bias Detection for Low-Resource Language Benchmarks},
+  author={aipmtdaisy},
+  year={2025},
+  month={10},
+  howpublished={\url{https://github.com/aipmtdaisy/low_resource_language_eval_Tibetan}},
+  note={Enhanced evaluation methodology built upon the TLUE benchmark (Gao et al., 2025).
+        Contributions include cross-model agreement analysis, LLM judge bias detection,
+        tier-based filtering framework, and statistical validation tools.}
+}
+```
+
+### Citing the Original TLUE Benchmark
+
+This project builds upon the TLUE (Tibetan Language Understanding Evaluation) benchmark. If you use the Ti-MMLU dataset or the original TLUE framework, please also cite:
+
 ```bibtex
 @article{gao2025tlue,
   title={TLUE: A Tibetan Language Understanding Evaluation Benchmark},
@@ -235,11 +255,30 @@ For questions about this evaluation framework or methodology, please open an iss
 
 ## Acknowledgments
 
-This evaluation was conducted using:
-- **TLUE benchmark** (https://github.com/Vicentvankor/TLUE)
+### Original TLUE Benchmark
+
+This project builds upon the **TLUE (Tibetan Language Understanding Evaluation)** benchmark created by Gao et al. We are grateful for their foundational work in creating a comprehensive evaluation framework for Tibetan language understanding.
+
+**Original TLUE contributions:**
+- Ti-MMLU dataset (670 questions across 67 subjects)
+- Bilingual Tibetan-Chinese question format
+- Basic model evaluation framework
+- Answer extraction methods
+
+Original repository: [https://github.com/Vicentvankor/TLUE](https://github.com/Vicentvankor/TLUE)
+
+### Model Providers
+
+This enhanced evaluation framework was developed using:
 - **Gemini 2.5 Pro/Flash** (Google)
 - **Claude Opus 4.1/Sonnet 4.5** (Anthropic)
 
-Special thanks to the TLUE benchmark creators for providing this important resource for Tibetan language model evaluation.
+We thank Google and Anthropic for providing access to these state-of-the-art language models, which made the cross-model agreement analysis and bias detection studies possible.
+
+### How to Cite
+
+When using this repository:
+- **If using the enhanced methodology** (answer key validation, bias detection, filtering): Cite both the enhanced framework and original TLUE (see [Citation](#citation) section)
+- **If using only the Ti-MMLU dataset**: Cite the original TLUE paper
 
 
