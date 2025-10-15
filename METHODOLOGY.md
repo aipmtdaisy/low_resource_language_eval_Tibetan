@@ -209,8 +209,6 @@ For the 130 questions where judge marked the answer key as incorrect, we analyze
 
 ### 4.4 Interpretation
 
-**⚠️ HIGH BIAS DETECTED**
-
 The 21.5× bias ratio indicates substantial self-agreement bias where:
 - Gemini judge systematically favors Gemini models' answers
 - This bias inflates Gemini's apparent performance on judge-validated subsets
@@ -604,6 +602,7 @@ If you use this enhanced evaluation methodology, please cite both this work and 
 Original TLUE Repository: https://github.com/Vicentvankor/TLUE
 
 ---
+
 
 
 
