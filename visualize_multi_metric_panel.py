@@ -245,31 +245,50 @@ def create_multi_metric_panel():
     df = pd.read_csv(csv_path)
 
     # Model info - enhanced colors and patterns for clarity and accessibility
+    # 7 models: 4 Claude + 3 Gemini
     models_info = {
-        'gemini-2-5-pro': {
-            'label': 'Gemini 2.5 Pro',
-            'color': '#1A5490',  # Darker saturated blue
-            'pattern': None,  # Solid fill
+        'claude-opus-4-6': {
+            'label': 'Claude Opus 4.6',
+            'color': '#8B0000',
+            'pattern': None,
             'order': 0
         },
-        'gemini-2-5-flash': {
-            'label': 'Gemini 2.5 Flash',
-            'color': '#4A8FD8',  # Medium blue
-            'pattern': '///',  # Diagonal hatching
+        'claude-opus-4-5': {
+            'label': 'Claude Opus 4.5',
+            'color': '#C74444',
+            'pattern': '///',
             'order': 1
         },
-        'claude-opus-4-1': {
-            'label': 'Claude Opus 4.1',
-            'color': '#C74444',  # Darker red
-            'pattern': None,  # Solid fill
+        'claude-sonnet-4-6': {
+            'label': 'Claude Sonnet 4.6',
+            'color': '#E67878',
+            'pattern': None,
             'order': 2
         },
         'claude-sonnet-4-5': {
             'label': 'Claude Sonnet 4.5',
-            'color': '#E67878',  # Medium red/pink
-            'pattern': '///',  # Diagonal hatching
+            'color': '#F5A623',
+            'pattern': '///',
             'order': 3
-        }
+        },
+        'gemini-3-flash': {
+            'label': 'Gemini 3 Flash',
+            'color': '#34A853',
+            'pattern': None,
+            'order': 4
+        },
+        'gemini-3-pro': {
+            'label': 'Gemini 3 Pro',
+            'color': '#1A5490',
+            'pattern': '///',
+            'order': 5
+        },
+        'gemini-3-1-pro': {
+            'label': 'Gemini 3.1 Pro',
+            'color': '#1A237E',
+            'pattern': None,
+            'order': 6
+        },
     }
 
     # Select key scenarios for comparison (as recommended by methodology review)
@@ -298,7 +317,7 @@ def create_multi_metric_panel():
     metrics_df = pd.DataFrame(metrics_data)
 
     # Create figure with 3 panels
-    fig, axes = plt.subplots(1, 3, figsize=(20, 7))
+    fig, axes = plt.subplots(1, 3, figsize=(24, 8))
     fig.patch.set_facecolor('white')
 
     metric_names = ['response_rate', 'overall_accuracy', 'conditional_accuracy']
@@ -308,8 +327,8 @@ def create_multi_metric_panel():
     num_models = len(models_info)
     num_scenarios = len(key_scenarios)
     x = np.arange(num_scenarios)
-    width = 0.18
-    offsets = np.linspace(-width*1.5, width*1.5, num_models)
+    width = 0.11
+    offsets = np.linspace(-width*(num_models-1)/2, width*(num_models-1)/2, num_models)
 
     # Plot each panel
     for panel_idx, (metric_name, metric_title) in enumerate(zip(metric_names, metric_titles)):

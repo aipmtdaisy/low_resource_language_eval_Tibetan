@@ -20,12 +20,15 @@ matplotlib.use('Agg')
 plt.style.use('seaborn-v0_8-whitegrid')
 matplotlib.rcParams['font.family'] = 'DejaVu Sans'
 
-# Model configuration
+# Model configuration (7 models: 4 Claude + 3 Gemini)
 MODEL_INFO = {
-    'gemini-2-5-pro': {'label': 'Gemini 2.5 Pro', 'color': '#4285F4', 'marker': 'o'},
-    'gemini-2-5-flash': {'label': 'Gemini 2.5 Flash', 'color': '#34A853', 'marker': 's'},
-    'claude-opus-4-1': {'label': 'Claude Opus 4', 'color': '#EA4335', 'marker': '^'},
-    'claude-sonnet-4-5': {'label': 'Claude Sonnet 4.5', 'color': '#FBBC04', 'marker': 'D'}
+    'claude-opus-4-6': {'label': 'Claude Opus 4.6', 'color': '#8B0000', 'marker': 'o'},
+    'claude-opus-4-5': {'label': 'Claude Opus 4.5', 'color': '#EA4335', 'marker': '^'},
+    'claude-sonnet-4-6': {'label': 'Claude Sonnet 4.6', 'color': '#E67878', 'marker': 'v'},
+    'claude-sonnet-4-5': {'label': 'Claude Sonnet 4.5', 'color': '#FBBC04', 'marker': 'D'},
+    'gemini-3-flash': {'label': 'Gemini 3 Flash', 'color': '#34A853', 'marker': 's'},
+    'gemini-3-pro': {'label': 'Gemini 3 Pro', 'color': '#4285F4', 'marker': 'p'},
+    'gemini-3-1-pro': {'label': 'Gemini 3.1 Pro', 'color': '#1A237E', 'marker': 'h'},
 }
 
 
@@ -152,7 +155,7 @@ def create_tier_level_progression():
     fig, ax = plt.subplots(figsize=(18, 8))
 
     # Plot for Gemini Pro (primary focus)
-    model_id = 'gemini-2-5-pro'
+    model_id = 'gemini-3-pro'
     info = MODEL_INFO[model_id]
 
     accuracies = []
@@ -217,7 +220,7 @@ def create_tier_level_progression():
                             edgecolor='#2E7D32', alpha=0.8))
 
     ax.set_xlabel('Validation Scenario', fontsize=13, fontweight='bold')
-    ax.set_ylabel('Conditional Accuracy (%) - Gemini 2.5 Pro', fontsize=13, fontweight='bold')
+    ax.set_ylabel('Conditional Accuracy (%) - Gemini 3 Pro', fontsize=13, fontweight='bold')
     ax.set_title('Tier Level Progression with Judge Integration\n' +
                 'Union (∪) Consistently Achieves Highest Accuracy',
                 fontsize=15, fontweight='bold', pad=20)
@@ -344,7 +347,8 @@ def create_recommended_scenarios_comparison():
 
     # Left plot: Accuracy comparison
     x = np.arange(len(scenarios))
-    width = 0.2
+    num_models = len(MODEL_INFO)
+    width = 0.8 / num_models
 
     for i, (model_id, info) in enumerate(MODEL_INFO.items()):
         accuracies = []
@@ -355,7 +359,7 @@ def create_recommended_scenarios_comparison():
             else:
                 accuracies.append(0)
 
-        offset = (i - 1.5) * width
+        offset = (i - (num_models - 1) / 2) * width
         bars = ax1.bar(x + offset, accuracies, width,
                       label=info['label'],
                       color=info['color'],
@@ -380,7 +384,7 @@ def create_recommended_scenarios_comparison():
     ax1.grid(axis='y', alpha=0.3, linestyle='--')
 
     # Right plot: Dataset size vs accuracy tradeoff (Gemini Pro)
-    model_id = 'gemini-2-5-pro'
+    model_id = 'gemini-3-pro'
 
     sizes = []
     accuracies = []
@@ -421,7 +425,7 @@ def create_recommended_scenarios_comparison():
                                    color=color, linewidth=2))
 
     ax2.set_xlabel('Dataset Size (Questions Evaluated)', fontsize=12, fontweight='bold')
-    ax2.set_ylabel('Conditional Accuracy (%) - Gemini 2.5 Pro', fontsize=12, fontweight='bold')
+    ax2.set_ylabel('Conditional Accuracy (%) - Gemini 3 Pro', fontsize=12, fontweight='bold')
     ax2.set_title('Quality vs Coverage Tradeoff',
                  fontsize=13, fontweight='bold', pad=15)
     ax2.grid(True, alpha=0.3, linestyle='--')
