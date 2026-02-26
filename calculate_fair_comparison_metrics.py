@@ -172,12 +172,8 @@ def calculate_llm_validated_metrics(
     return total, extracted, correct, extracted_valid, correct_valid, invalid_count, unvalidated_count
 
 def main():
-    # Models to compare (new round + previous round; gemini-3-pro & gemini-3-1-pro excluded pending re-run)
-    models = [
-        'claude-opus-4-6', 'claude-opus-4-5', 'claude-sonnet-4-6', 'claude-sonnet-4-5',
-        'claude-opus-4-1',
-        'gemini-3-flash', 'gemini-2-5-flash', 'gemini-2-5-pro',
-    ]
+    # Models to compare
+    models = ['claude-sonnet-4-5', 'claude-opus-4-1', 'gemini-2-5-pro', 'gemini-2-5-flash']
 
     print("="*120)
     print("Model Evaluation Metrics - Full Dataset, Fair Comparison, and LLM-Validated Comparison")
@@ -303,7 +299,7 @@ def main():
     print("-" * 120)
 
     # Load LLM validation results
-    validation_file = "TLUE/model_answer/gemini-3-pro_eval_res/gemini-3-pro_llm_validated_v3_retry.jsonl"
+    validation_file = "TLUE/model_answer/gemini-2-5-pro_eval_res/gemini-2-5-pro_llm_validated_v3_retry.jsonl"
     validation_map = load_answer_key_validation(validation_file)
 
     if len(validation_map) > 0:

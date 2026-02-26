@@ -14,15 +14,12 @@ matplotlib.use('Agg')
 plt.style.use('seaborn-v0_8-whitegrid')
 matplotlib.rcParams['font.family'] = 'DejaVu Sans'
 
-# Model configuration (7 models: 4 Claude + 3 Gemini)
+# Model configuration
 MODEL_INFO = {
-    'claude-opus-4-6': {'color': '#8B0000', 'label': 'Claude Opus 4.6'},
-    'claude-opus-4-5': {'color': '#EA4335', 'label': 'Claude Opus 4.5'},
-    'claude-sonnet-4-6': {'color': '#E67878', 'label': 'Claude Sonnet 4.6'},
-    'claude-sonnet-4-5': {'color': '#FBBC04', 'label': 'Claude Sonnet 4.5'},
-    'gemini-3-flash': {'color': '#34A853', 'label': 'Gemini 3 Flash'},
-    'gemini-3-pro': {'color': '#4285F4', 'label': 'Gemini 3 Pro'},
-    'gemini-3-1-pro': {'color': '#1A237E', 'label': 'Gemini 3.1 Pro'},
+    'gemini-2-5-pro': {'color': '#4285F4', 'label': 'Gemini 2.5 Pro'},
+    'gemini-2-5-flash': {'color': '#34A853', 'label': 'Gemini 2.5 Flash'},
+    'claude-opus-4-1': {'color': '#EA4335', 'label': 'Claude Opus 4'},
+    'claude-sonnet-4-5': {'color': '#FBBC04', 'label': 'Claude Sonnet 4.5'}
 }
 
 
@@ -52,7 +49,7 @@ def create_individual_model_radar():
     angles = np.linspace(0, 2 * np.pi, num_vars, endpoint=False).tolist()
     angles += angles[:1]
 
-    fig, axes = plt.subplots(3, 3, figsize=(22, 22), subplot_kw=dict(projection='polar'))
+    fig, axes = plt.subplots(2, 2, figsize=(16, 16), subplot_kw=dict(projection='polar'))
     axes = axes.flatten()
 
     for idx, (model_id, info) in enumerate(MODEL_INFO.items()):
@@ -108,10 +105,6 @@ def create_individual_model_radar():
         ax.set_title(f'{info["label"]}\nBest: {max(values[:-1]):.1f}% '
                     f'(+{max(values[:-1]) - baseline_val:.1f}pp)',
                     fontsize=13, fontweight='bold', pad=20, color=info['color'])
-
-    # Hide unused subplots
-    for idx in range(len(MODEL_INFO), len(axes)):
-        axes[idx].set_visible(False)
 
     plt.suptitle('Model Performance Across Validation Scenarios\n'
                  'Tier 1-2 Threshold Comparison',
@@ -213,7 +206,7 @@ def create_tier_progression_radar():
 
     df = pd.read_csv('enhanced_fair_comparison_with_judge.csv')
 
-    model_id = 'gemini-3-pro'  # Focus on best performing model
+    model_id = 'gemini-2-5-pro'  # Focus on best performing model
     info = MODEL_INFO[model_id]
 
     # Show progression for each tier level
