@@ -13,12 +13,16 @@ matplotlib.use('Agg')
 plt.style.use('seaborn-v0_8-whitegrid')
 matplotlib.rcParams['font.family'] = 'DejaVu Sans'
 
-# Model configuration
+# Model configuration (8 models: 5 Claude + 3 Gemini)
 MODEL_INFO = {
-    'gemini-2-5-pro': {'label': 'Gemini 2.5 Pro', 'color': '#4285F4'},
-    'gemini-2-5-flash': {'label': 'Gemini 2.5 Flash', 'color': '#34A853'},
-    'claude-opus-4-1': {'label': 'Claude Opus 4', 'color': '#EA4335'},
-    'claude-sonnet-4-5': {'label': 'Claude Sonnet 4.5', 'color': '#FBBC04'}
+    'claude-opus-4-6': {'label': 'Claude Opus 4.6', 'color': '#8B0000'},
+    'claude-opus-4-5': {'label': 'Claude Opus 4.5', 'color': '#EA4335'},
+    'claude-sonnet-4-6': {'label': 'Claude Sonnet 4.6', 'color': '#E67878'},
+    'claude-sonnet-4-5': {'label': 'Claude Sonnet 4.5', 'color': '#FBBC04'},
+    'claude-opus-4-1': {'label': 'Claude Opus 4.1', 'color': '#C74444'},
+    'gemini-3-flash': {'label': 'Gemini 3 Flash', 'color': '#34A853'},
+    'gemini-2-5-flash': {'label': 'Gemini 2.5 Flash', 'color': '#4A8FD8'},
+    'gemini-2-5-pro': {'label': 'Gemini 2.5 Pro', 'color': '#1A237E'},
 }
 
 

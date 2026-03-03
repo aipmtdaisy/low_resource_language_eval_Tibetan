@@ -14,12 +14,16 @@ matplotlib.use('Agg')
 plt.style.use('seaborn-v0_8-whitegrid')
 matplotlib.rcParams['font.family'] = 'DejaVu Sans'
 
-# Model configuration
+# Model configuration (8 models: 5 Claude + 3 Gemini)
 MODEL_INFO = {
-    'gemini-2-5-pro': {'color': '#4285F4', 'label': 'Gemini 2.5 Pro'},
-    'gemini-2-5-flash': {'color': '#34A853', 'label': 'Gemini 2.5 Flash'},
-    'claude-opus-4-1': {'color': '#EA4335', 'label': 'Claude Opus 4'},
-    'claude-sonnet-4-5': {'color': '#FBBC04', 'label': 'Claude Sonnet 4.5'}
+    'claude-opus-4-6': {'color': '#8B0000', 'label': 'Claude Opus 4.6'},
+    'claude-opus-4-5': {'color': '#EA4335', 'label': 'Claude Opus 4.5'},
+    'claude-sonnet-4-6': {'color': '#E67878', 'label': 'Claude Sonnet 4.6'},
+    'claude-sonnet-4-5': {'color': '#FBBC04', 'label': 'Claude Sonnet 4.5'},
+    'claude-opus-4-1': {'color': '#C74444', 'label': 'Claude Opus 4.1'},
+    'gemini-3-flash': {'color': '#34A853', 'label': 'Gemini 3 Flash'},
+    'gemini-2-5-flash': {'color': '#4A8FD8', 'label': 'Gemini 2.5 Flash'},
+    'gemini-2-5-pro': {'color': '#1A237E', 'label': 'Gemini 2.5 Pro'},
 }
 
 
@@ -49,7 +53,7 @@ def create_individual_model_radar():
     angles = np.linspace(0, 2 * np.pi, num_vars, endpoint=False).tolist()
     angles += angles[:1]
 
-    fig, axes = plt.subplots(2, 2, figsize=(16, 16), subplot_kw=dict(projection='polar'))
+    fig, axes = plt.subplots(3, 3, figsize=(22, 22), subplot_kw=dict(projection='polar'))
     axes = axes.flatten()
 
     for idx, (model_id, info) in enumerate(MODEL_INFO.items()):
@@ -105,6 +109,10 @@ def create_individual_model_radar():
         ax.set_title(f'{info["label"]}\nBest: {max(values[:-1]):.1f}% '
                     f'(+{max(values[:-1]) - baseline_val:.1f}pp)',
                     fontsize=13, fontweight='bold', pad=20, color=info['color'])
+
+    # Hide unused subplots
+    for idx in range(len(MODEL_INFO), len(axes)):
+        axes[idx].set_visible(False)
 
     plt.suptitle('Model Performance Across Validation Scenarios\n'
                  'Tier 1-2 Threshold Comparison',

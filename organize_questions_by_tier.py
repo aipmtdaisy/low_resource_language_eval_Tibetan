@@ -4,6 +4,8 @@ Organize questions by tier for manual review
 
 Creates folder structure under TLUE/model_answer/tier_analysis/
 with complete question data organized by tier category.
+
+Generalized for N models with brand-based tier logic.
 """
 
 import json
@@ -11,33 +13,62 @@ import csv
 import os
 from pathlib import Path
 from collections import Counter, defaultdict
+from typing import Dict, Optional, Tuple
+
+# 8 models: new round + previous round (gemini-3-pro & gemini-3-1-pro excluded pending re-run)
+MODELS = [
+    'claude-opus-4-6', 'claude-opus-4-5', 'claude-sonnet-4-6', 'claude-sonnet-4-5',
+    'claude-opus-4-1',
+    'gemini-3-flash', 'gemini-2-5-flash', 'gemini-2-5-pro',
+]
+
+BRAND_MAP = {
+    'claude-opus-4-6': 'claude',
+    'claude-opus-4-5': 'claude',
+    'claude-sonnet-4-6': 'claude',
+    'claude-sonnet-4-5': 'claude',
+    'claude-opus-4-1': 'claude',
+    'gemini-3-flash': 'gemini',
+    'gemini-2-5-flash': 'gemini',
+    'gemini-2-5-pro': 'gemini',
+}
+
+NUM_MODELS = len(MODELS)
+
+# Which model's judge validation file to use
+JUDGE_MODEL = 'gemini-2-5-pro'
+
 
 def load_all_data():
     """Load judge validation and all model answers"""
 
     # Load judge validation
-    validation_file = "TLUE/model_answer/gemini-2-5-pro_eval_res/gemini-2-5-pro_llm_validated_v3_retry.jsonl"
+    validation_file = f"TLUE/model_answer/{JUDGE_MODEL}_eval_res/{JUDGE_MODEL}_llm_validated_v3_retry.jsonl"
     judge_data = {}
 
-    with open(validation_file, 'r', encoding='utf-8') as f:
-        for line in f:
-            if not line.strip():
-                continue
-            entry = json.loads(line)
-            loc = entry.get('loc', '')
-            val = entry.get('llm_validation', {})
-            judge_data[loc] = {
-                'answer_key_correct': val.get('answer_key_correct'),
-                'judge_answer': val.get('correct_answer', ''),
-                'judge_explanation': val.get('answer_explanation', ''),
-                'judge_confidence': val.get('confidence', '')
-            }
+    judge_path = Path(validation_file)
+    if judge_path.exists():
+        with open(validation_file, 'r', encoding='utf-8') as f:
+            for line in f:
+                if not line.strip():
+                    continue
+                entry = json.loads(line)
+                loc = entry.get('loc', '')
+                val = entry.get('llm_validation', {})
+                judge_data[loc] = {
+                    'answer_key_correct': val.get('answer_key_correct'),
+                    'judge_answer': val.get('correct_answer', ''),
+                    'judge_explanation': val.get('answer_explanation', ''),
+                    'judge_confidence': val.get('confidence', '')
+                }
+    else:
+        print(f"Warning: Judge validation file not found: {validation_file}")
+        print("  Judge data will be empty.")
 
     # Load model answers
-    models = ['gemini-2-5-pro', 'gemini-2-5-flash', 'claude-opus-4-1', 'claude-sonnet-4-5']
     all_answers = {}
 
-    for model_id in models:
+    for model_id in MODELS:
         combined_file = Path(f"TLUE/model_answer/{model_id}_eval_res/{model_id}_combined_results.jsonl")
         model_data = {}
 
@@ -61,62 +92,66 @@ def load_all_data():
 
     return judge_data, all_answers
 
-def categorize_question(gemini_pro, gemini_flash, claude_opus, claude_sonnet, answer_key):
-    """Categorize a question based on model agreement pattern (MECE)"""
 
-    answers = [gemini_pro, gemini_flash, claude_opus, claude_sonnet]
+def categorize_question(model_answers: Dict[str, Optional[str]], answer_key: str) -> Tuple[str, Optional[str]]:
+    """Categorize a question based on model agreement pattern (MECE)"""
+    answers = list(model_answers.values())
+
     if None in answers:
         return 'extraction_failed', None
 
     if all(ans == answer_key for ans in answers):
         return 'all_correct', None
 
-    if len(set(answers)) == 1 and answers[0] != answer_key:
-        return 'tier1_all_4_agree', answers[0]
-
     answer_counts = Counter(answers)
-    for ans, count in answer_counts.items():
-        if count == 3 and ans != answer_key:
-            return 'tier2_3_agree', ans
+    non_key_counts = {ans: cnt for ans, cnt in answer_counts.items() if ans != answer_key}
+    if not non_key_counts:
+        return 'all_correct', None
 
-    # Cross-brand
-    gemini_answers = {gemini_pro, gemini_flash}
-    claude_answers = {claude_opus, claude_sonnet}
+    top_answer, top_count = max(non_key_counts.items(), key=lambda x: x[1])
 
-    cross_brand_agreements = []
-    for g_ans in gemini_answers:
-        for c_ans in claude_answers:
-            if g_ans == c_ans and g_ans != answer_key:
-                cross_brand_agreements.append(g_ans)
+    # Tier 1: near-unanimous (NUM_MODELS-1 or more agree)
+    if top_count >= NUM_MODELS - 1:
+        return 'tier1_near_unanimous', top_answer
 
-    if cross_brand_agreements:
-        agreement_counts = Counter(cross_brand_agreements)
-        most_common_ans = agreement_counts.most_common(1)[0][0]
-        return 'tier3_cross_brand', most_common_ans
+    # Tier 2: strong agreement (NUM_MODELS-2 agree)
+    if top_count >= NUM_MODELS - 2:
+        return 'tier2_strong_agree', top_answer
 
-    # Tier 4
-    gemini_agree = (gemini_pro == gemini_flash and gemini_pro != answer_key)
-    claude_agree = (claude_opus == claude_sonnet and claude_opus != answer_key)
+    # Check brand composition for remaining tiers
+    if top_count >= 3:
+        agreeing_brands = set()
+        for model_id, ans in model_answers.items():
+            if ans == top_answer:
+                agreeing_brands.add(BRAND_MAP[model_id])
+        if len(agreeing_brands) >= 2:
+            return 'tier3_cross_brand', top_answer
+        else:
+            return 'tier4_same_brand', top_answer
 
-    if gemini_agree and claude_agree:
-        return 'tier4_both_brands', gemini_pro
-    elif gemini_agree:
-        return 'tier4_gemini_only', gemini_pro
-    elif claude_agree:
-        return 'tier4_claude_only', claude_opus
+    # Check 2-model agreements
+    for ans, cnt in non_key_counts.items():
+        if cnt >= 2:
+            agreeing_brands = set()
+            for model_id, model_ans in model_answers.items():
+                if model_ans == ans:
+                    agreeing_brands.add(BRAND_MAP[model_id])
+            if len(agreeing_brands) >= 2:
+                return 'tier3_cross_brand', ans
+            else:
+                return 'tier4_same_brand', ans
 
     return 'tier5_no_consensus', None
+
 
 def create_tier_folders(base_path):
     """Create folder structure for tier analysis"""
 
     tier_folders = [
-        'tier1_all_4_agree',
-        'tier2_3_agree',
+        'tier1_near_unanimous',
+        'tier2_strong_agree',
         'tier3_cross_brand',
-        'tier4_both_brands',
-        'tier4_gemini_only',
-        'tier4_claude_only',
+        'tier4_same_brand',
         'tier5_no_consensus',
         'all_correct',
         'extraction_failed'
@@ -139,36 +174,39 @@ def save_tier_data(tier_name, questions_data, base_path, judge_data):
         for q in questions_data:
             f.write(json.dumps(q, ensure_ascii=False) + '\n')
 
-    # 2. Save as CSV
+    # 2. Save as CSV with dynamic model columns
     csv_path = tier_path / 'questions.csv'
     if questions_data:
         with open(csv_path, 'w', newline='', encoding='utf-8') as f:
-            fieldnames = ['loc', 'answer_key', 'gemini_pro', 'gemini_flash',
-                         'claude_opus', 'claude_sonnet', 'agreed_answer',
-                         'judge_flagged', 'judge_answer', 'category', 'question_preview']
+            fieldnames = ['loc', 'answer_key']
+            # Add per-model columns dynamically
+            for model_id in MODELS:
+                fieldnames.append(model_id)
+            fieldnames.extend(['agreed_answer', 'judge_flagged', 'judge_answer',
+                             'category', 'question_preview'])
             writer = csv.DictWriter(f, fieldnames=fieldnames)
             writer.writeheader()
 
             for q in questions_data:
-                writer.writerow({
+                row = {
                     'loc': q['loc'],
                     'answer_key': q['answer_key'],
-                    'gemini_pro': q['gemini_pro'],
-                    'gemini_flash': q['gemini_flash'],
-                    'claude_opus': q['claude_opus'],
-                    'claude_sonnet': q['claude_sonnet'],
                     'agreed_answer': q.get('agreed_answer', ''),
                     'judge_flagged': 'Yes' if q.get('judge_flagged') else 'No',
                     'judge_answer': q.get('judge_answer', ''),
                     'category': q.get('category', ''),
                     'question_preview': q.get('question', '')[:100]
-                })
+                }
+                for model_id in MODELS:
+                    row[model_id] = q.get(model_id, '')
+                writer.writerow(row)
 
     # 3. Save summary
     summary_path = tier_path / 'summary.txt'
     with open(summary_path, 'w', encoding='utf-8') as f:
         f.write(f"="*80 + "\n")
         f.write(f"Tier: {tier_name}\n")
+        f.write(f"Models: {NUM_MODELS} ({', '.join(MODELS)})\n")
         f.write(f"="*80 + "\n\n")
 
         f.write(f"Total questions: {len(questions_data)}\n\n")
@@ -199,10 +237,8 @@ def save_tier_data(tier_name, questions_data, base_path, judge_data):
             f.write(f"Example {i}: {q['loc']}\n")
             f.write(f"  Category: {q.get('category', 'N/A')}\n")
             f.write(f"  Answer Key: {q['answer_key']}\n")
-            f.write(f"  Gemini Pro:    {q['gemini_pro']}\n")
-            f.write(f"  Gemini Flash:  {q['gemini_flash']}\n")
-            f.write(f"  Claude Opus:   {q['claude_opus']}\n")
-            f.write(f"  Claude Sonnet: {q['claude_sonnet']}\n")
+            for model_id in MODELS:
+                f.write(f"  {model_id:<22} {q.get(model_id, 'N/A')}\n")
             if q.get('agreed_answer'):
                 f.write(f"  Models agree on: {q['agreed_answer']}\n")
             if q.get('judge_flagged'):
@@ -214,45 +250,44 @@ def save_tier_data(tier_name, questions_data, base_path, judge_data):
 def main():
     print("="*80)
     print("Organizing Questions by Tier for Manual Review")
+    print(f"Models: {NUM_MODELS} ({', '.join(MODELS)})")
     print("="*80)
     print()
 
     # Load data
     print("Loading data...")
     judge_data, all_answers = load_all_data()
-    print(f"✓ Loaded data for {len(all_answers['gemini-2-5-pro'])} questions")
+    first_model = MODELS[0]
+    print(f"  Loaded data for {len(all_answers[first_model])} questions")
     print()
 
     # Create folder structure
     base_path = Path("TLUE/model_answer/tier_analysis")
     print(f"Creating folder structure at: {base_path}")
     tier_folders = create_tier_folders(base_path)
-    print(f"✓ Created {len(tier_folders)} tier folders")
+    print(f"  Created {len(tier_folders)} tier folders")
     print()
 
     # Categorize and organize questions
     print("Categorizing questions...")
     tier_data = defaultdict(list)
 
-    all_locs = list(all_answers['gemini-2-5-pro'].keys())
+    all_locs = list(all_answers[first_model].keys())
 
     for loc in all_locs:
-        # Get model answers
-        gemini_pro_data = all_answers['gemini-2-5-pro'][loc]
-        gemini_flash_data = all_answers['gemini-2-5-flash'][loc]
-        claude_opus_data = all_answers['claude-opus-4-1'][loc]
-        claude_sonnet_data = all_answers['claude-sonnet-4-5'][loc]
+        # Build model_answers dict for this question
+        model_ans = {}
+        for model_id in MODELS:
+            if loc in all_answers[model_id]:
+                model_ans[model_id] = all_answers[model_id][loc]['extracted']
+            else:
+                model_ans[model_id] = None
 
-        gemini_pro = gemini_pro_data['extracted']
-        gemini_flash = gemini_flash_data['extracted']
-        claude_opus = claude_opus_data['extracted']
-        claude_sonnet = claude_sonnet_data['extracted']
-        answer_key = gemini_pro_data['answer_key']
+        answer_key = all_answers[first_model][loc]['answer_key']
+        first_model_data = all_answers[first_model][loc]
 
         # Categorize
-        category, agreed_answer = categorize_question(
-            gemini_pro, gemini_flash, claude_opus, claude_sonnet, answer_key
-        )
+        category, agreed_answer = categorize_question(model_ans, answer_key)
 
         # Get judge info
         judge_info = judge_data.get(loc, {})
@@ -263,23 +298,22 @@ def main():
             'loc': loc,
             'tier': category,
             'answer_key': answer_key,
-            'gemini_pro': gemini_pro,
-            'gemini_flash': gemini_flash,
-            'claude_opus': claude_opus,
-            'claude_sonnet': claude_sonnet,
             'agreed_answer': agreed_answer,
-            'question': gemini_pro_data['question'],
-            'choices': gemini_pro_data['choices'],
-            'category': gemini_pro_data['category'],
+            'question': first_model_data['question'],
+            'choices': first_model_data['choices'],
+            'category': first_model_data['category'],
             'judge_flagged': judge_flagged,
             'judge_answer': judge_info.get('judge_answer', ''),
             'judge_explanation': judge_info.get('judge_explanation', ''),
             'judge_confidence': judge_info.get('judge_confidence', '')
         }
+        # Add per-model answers
+        for model_id in MODELS:
+            question_data[model_id] = model_ans[model_id]
 
         tier_data[category].append(question_data)
 
-    print(f"✓ Categorized {len(all_locs)} questions")
+    print(f"  Categorized {len(all_locs)} questions")
     print()
 
     # Save data for each tier
@@ -297,7 +331,7 @@ def main():
                 'judge_flagged': judge_flagged,
                 'judge_rate': judge_flagged / len(questions) * 100 if len(questions) > 0 else 0
             })
-            print(f"  ✓ {tier_name}: {len(questions)} questions saved")
+            print(f"  {tier_name}: {len(questions)} questions saved")
 
     print()
     print("="*80)
@@ -312,7 +346,7 @@ def main():
 
     print()
     print("="*80)
-    print("✓ Organization complete!")
+    print("Organization complete!")
     print(f"Data saved to: {base_path}")
     print()
     print("Each tier folder contains:")

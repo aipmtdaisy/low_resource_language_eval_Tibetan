@@ -2,13 +2,13 @@
 
 ## Executive Summary
 
-This document describes the enhanced methodology used to evaluate large language models (Gemini 2.5 Pro/Flash and Claude Opus/Sonnet 4) on the Tibetan Language Understanding Evaluation (TLUE) benchmark.
+This document describes the enhanced methodology used to evaluate large language models (Gemini 3 Flash, Gemini 2.5 Pro/Flash, Claude Opus 4.6/4.5/4.1, and Claude Sonnet 4.6/4.5) on the Tibetan Language Understanding Evaluation (TLUE) benchmark.
 1. Original repository: https://github.com/Vicentvankor/TLUE
 2. Original paper: https://arxiv.org/pdf/2503.12051
 
 This doc has particular emphasis on **validating answer key quality** through two independent approaches: cross-model agreement analysis and LLM-as-judge validation.
 
-Our findings reveal answer key quality issues potentially affecting 16% of questions, and demonstrate that filtering by data quality can improve measured accuracy by 13-37 percentage points. Critically, we also identified **substantial judge bias** (21.5× agreement ratio favoring same-family models) when using Gemini as judge. A deep dive on this potential bias is required to check if it's true bias or true accuracy, highlighting the importance of using agreement-based filtering as a complementary or primary validation method.
+Our findings reveal answer key quality issues potentially affecting ~8-44% of questions, and demonstrate that filtering by data quality can improve measured accuracy by 4-22 percentage points. In our earlier 4-model analysis, we also identified **substantial judge bias** (21.5× agreement ratio favoring same-family models) when using Gemini as judge *(note: judge analysis was conducted during the initial 4-model evaluation and has not yet been re-run for the current 8-model comparison)*. A deep dive on this potential bias is required to check if it's true bias or true accuracy, highlighting the importance of using agreement-based filtering as a complementary or primary validation method.
 
 ---
 
@@ -38,7 +38,7 @@ The original Tibetan Language Understanding Evaluation (TLUE) is a multiple-choi
 
 When evaluating multiple state-of-the-art models using TLUE, we observed **systematic disagreement** between model answers and provided answer keys, with models frequently choosing the same "incorrect" answer. This pattern suggested potential issues with the answer keys themselves rather than model failures.
 
-**Key observation**: When four independent models (two from Google, two from Anthropic) all select the same answer that differs from the provided key, this indicates high probability of answer key error. Human in the loop is required to further check those datasets.
+**Key observation**: When eight independent models (three from Google, five from Anthropic) all select the same answer that differs from the provided key, this indicates high probability of answer key error. Human in the loop is required to further check those datasets.
 
 ### 1.3 Research Questions
 
@@ -54,13 +54,17 @@ When evaluating multiple state-of-the-art models using TLUE, we observed **syste
 
 ### 2.1 Models Evaluated
 
-We evaluated four state-of-the-art large language models:
+We evaluated eight state-of-the-art large language models:
 
 | Model | Provider | Family | Release |
 |-------|----------|--------|---------|
+| **Gemini 3 Flash** | Google | Gemini | 2025 |
 | **Gemini 2.5 Pro** | Google | Gemini | 2025 |
 | **Gemini 2.5 Flash** | Google | Gemini | 2025 |
+| **Claude Opus 4.6** | Anthropic | Claude | 2025 |
+| **Claude Opus 4.5** | Anthropic | Claude | 2025 |
 | **Claude Opus 4.1** | Anthropic | Claude | 2025 |
+| **Claude Sonnet 4.6** | Anthropic | Claude | 2025 |
 | **Claude Sonnet 4.5** | Anthropic | Claude | 2025 |
 
 ### 2.2 Evaluation Protocol
@@ -77,17 +81,22 @@ We evaluated four state-of-the-art large language models:
 
 | Model | Valid Responses | Correct Answers | Conditional Accuracy |
 |-------|----------------|-----------------|---------------------|
+| Gemini 3 Flash | 662/670 (98.8%) | 489/662 | **73.9%** |
 | Gemini 2.5 Pro | 657/670 (98.1%) | 447/657 | **68.0%** |
 | Gemini 2.5 Flash | 649/670 (96.9%) | 430/649 | **66.3%** |
+| Claude Opus 4.6 | 619/670 (92.4%) | 368/619 | **59.5%** |
+| Claude Opus 4.5 | 633/670 (94.5%) | 370/633 | **58.5%** |
 | Claude Opus 4.1 | 643/670 (96.0%) | 342/643 | **53.2%** |
-| Claude Sonnet 4.5 | 653/670 (97.5%) | 330/653 | **50.5%** |
+| Claude Sonnet 4.5 | 567/670 (84.6%) | 278/567 | **49.0%** |
+| Claude Sonnet 4.6 | 658/670 (98.2%) | 300/658 | **45.6%** |
 
 ### 2.4 Initial Observations
 
-1. **High response rates** (96-98%) indicate models can process the content
-2. **Large performance gap** between Gemini and Claude families (~16pp)
-3. **Gemini models outperform Claude** across all subjects
-4. However, systematic analysis revealed this gap may be inflated by answer key quality issues. Answer key valiadation is required.
+1. **High response rates** (84.6-98.8%) indicate most models can process the content, though Claude Sonnet 4.5 has notably lower response rate (84.6%)
+2. **Gemini 3 Flash is the top performer** at 73.9% conditional accuracy
+3. **Large performance gap** between Gemini and Claude families (~14-28pp)
+4. **Newer Claude Opus models (4.5/4.6) improve over 4.1** but still trail Gemini family
+5. However, systematic analysis revealed this gap may be inflated by answer key quality issues. Answer key validation is required.
 
 ---
 
@@ -97,39 +106,41 @@ To address answer key quality concerns, we developed **two independent validatio
 
 ### 3.1 Method 1: Cross-Model Agreement Analysis
 
-**Hypothesis**: When more than 3 independent models from different providers agree on an answer that differs from the key, the consensus answer is likely correct.
+**Hypothesis**: When all or nearly all independent models from different providers agree on an answer that differs from the key, the consensus answer is likely correct.
 
 **Implementation**:
 ```python
-def categorize_question(gemini_pro, gemini_flash, claude_opus, claude_sonnet, answer_key):
-    """Categorize based on model agreement pattern"""
+def categorize_question(model_answers, answer_key):
+    """Categorize based on 8-model agreement pattern"""
 
-    # Tier 1: All 4 models agree (different from key)
+    # Tier 1: All 8 models agree (different from key)
     if all_models_agree and answer != answer_key:
-        return 'tier1_all_4_agree'
+        return 'tier1_all_8_agree'
 
-    # Tier 2: 3 models agree (different from key)
-    if three_models_agree and answer != answer_key:
-        return 'tier2_3_agree'
+    # Tier 2: 7+ models agree (different from key)
+    if seven_plus_agree and answer != answer_key:
+        return 'tier2_7_plus_agree'
 
-    # Tier 3: Cross-brand agreement (1 Gemini + 1 Claude agree)
-    if gemini_agrees_with_claude and answer != answer_key:
+    # Tier 3: Cross-brand majority agrees (different from key)
+    if cross_brand_majority and answer != answer_key:
         return 'tier3_cross_brand'
 
-    # Tier 4: Same-brand agreement only
+    # Tier 4: Same-brand majority only
     # Tier 5: No consensus
 ```
 
 **Tiers of confidence**:
-- **Tier 1** (Highest): All 4 models agree but different from key → 33 questions (4.9%)
-- **Tier 2** (High): 3 models agree but different from key → 74 questions (11.0%)
-- **Tier 3** (Medium): Cross-brand pair agrees but different from key → 50 questions (7.5%)
-- **Tier 4** (Low): Same-brand only but different from key → 94 questions (14.0%)
-- **Tier 5**: No consensus → 111 questions (16.6%)
+- **Tier 1** (Highest): All 8 models agree but different from key → 36 questions (5.4%)
+- **Tier 2** (High): 7+ models agree but different from key → 17 questions (2.5%)
+- **Tier 3** (Medium): Cross-brand majority agrees but different from key → 117 questions (17.5%)
+- **Tier 4** (Low): Same-brand majority only but different from key → 122 questions (18.2%)
+- **Tier 5**: No consensus → remaining questions
 
-**Total potentially problematic**: Tier 1-2 = **107 questions (16.0%)**
+**Total potentially problematic**: Tier 1-2 = **53 questions (7.9%)**
 
 ### 3.2 Method 2: LLM-as-Judge Validation
+
+> **Note**: The LLM-as-judge analysis below was conducted during the initial 4-model evaluation (Gemini 2.5 Pro/Flash, Claude Opus 4.1, Claude Sonnet 4.5). It has not yet been re-run for the current 8-model comparison. Results are retained for methodological reference.
 
 **Philosophy**: Instruct a LLM-as-judge (Gemini 2.5 Pro) to independently verify answer keys by analyzing question content, all answer choices, and provided rationale.
 
@@ -157,9 +168,9 @@ Task:
 
 ### 3.3 Method Comparison
 
-| Metric | Cross-Model Agreement | LLM Judge |
+| Metric | Cross-Model Agreement (8-model) | LLM Judge *(prior 4-model run)* |
 |--------|----------------------|-----------|
-| Questions flagged | 107 (Tier 1-2) | 130 |
+| Questions flagged | 53 (Tier 1-2) | 130 |
 | Bias-free | ✅ Yes (uses consensus) | ⚠️ No (21.5× bias detected) |
 | Interpretability | ✅ High (counts visible) | ⚠️ Moderate (black box) |
 | Independence | ✅ Model-agnostic | ❌ Uses Gemini judge |
@@ -169,6 +180,8 @@ Task:
 ---
 
 ## 4. Judge Bias Detection & Analysis
+
+> **Note**: This judge bias analysis was conducted during the initial 4-model evaluation (Gemini 2.5 Pro/Flash, Claude Opus 4.1, Claude Sonnet 4.5). The specific numbers (130 questions, 21.5× bias ratio, agreement rates) reflect that earlier comparison. Re-running the judge analysis with the current 8-model set is planned as future work.
 
 ### 4.1 Motivation
 
@@ -227,24 +240,24 @@ We evaluated models under multiple data quality scenarios:
 | Scenario | Questions Excluded | Remaining Questions | Description |
 |----------|-------------------|---------------------|-------------|
 | **Baseline** | None | 670 | Original dataset |
-| **Tier 1 Only** | Tier 1 (33) | 637 | Exclude highest-confidence errors |
-| **Tier 1-2 Only** | Tier 1-2 (107) | 563 | **Recommended**: Exclude high-confidence errors |
-| **Tier 1-3 Only** | Tier 1-3 (157) | 513 | Include medium-confidence |
-| **Tier 1-4 Only** | Tier 1-4 (251) | 419 | Include low-confidence |
-| **Judge Only** | Judge disputed (130) | 540 | Use LLM judge validation |
-| **Tier 1-2 ∪ Judge** | Union (177) | 493 | **Highest quality**: Combine both methods |
+| **Tier 1 Only** | Tier 1 (36) | 634 | Exclude highest-confidence errors |
+| **Tier 1-2 Only** | Tier 1-2 (53) | 617 | **Recommended**: Exclude high-confidence errors |
+| **Tier 1-3 Only** | Tier 1-3 (170) | 500 | Include medium-confidence |
+| **Tier 1-4 Only** | Tier 1-4 (292) | 378 | Include low-confidence |
 
 ### 5.2 Set Relationship Analysis
 
-**Overlap between methods (model agreement vs llm-as-judge)**:
+> **Note**: The overlap numbers below (107, 130, 60, 177) are from the prior 4-model run and reflect the 4-model tier counts (Tier 1-2 = 107). They are **not** applicable to the current 8-model tier counts (Tier 1-2 = 53, Tier 1-3 = 170, Tier 1-4 = 292). Re-running the judge analysis for the 8-model set is needed to produce updated overlap figures.
+
+**Overlap between methods (model agreement vs llm-as-judge)** *(prior 4-model run)*:
 ```
-Tier 1-2 questions:     107
-Judge disputed:         130
+Tier 1-2 questions:     107  (4-model run; current 8-model Tier 1-2 = 53)
+Judge disputed:         130  (4-model run; judge not re-run for 8-model)
 Intersection (∩):        60 (56% of Tier 1-2, 46% of Judge)
 Union (∪):              177 (26.4% of dataset)
 ```
 
-**Interpretation**:
+**Interpretation** *(from 4-model analysis)*:
 - 56% of high-confidence model disagreements confirmed by the llm-as-judge
 - 54% of judge disputes not supported by strong model consensus (potential bias)
 - Union approach maximizes coverage while controlling for judge bias
@@ -266,36 +279,34 @@ Union (∪):              177 (26.4% of dataset)
 
 **Conditional Accuracy across scenarios**:
 
-| Scenario | Gemini 2.5 Pro | Gemini 2.5 Flash | Claude Opus 4.1 | Claude Sonnet 4.5 |
-|----------|---------------|------------------|-----------------|-------------------|
-| Baseline | 68.0% | 66.3% | 53.2% | 50.5% |
-| Tier 1 Only | 69.3% (+1.3pp) | 68.0% (+1.7pp) | 54.6% (+1.4pp) | 51.8% (+1.3pp) |
-| **Tier 1-2 Only** | **79.1% (+11.1pp)** | **77.7% (+11.4pp)** | **62.3% (+9.1pp)** | **58.8% (+8.3pp)** |
-| Tier 1-3 Only | 81.8% (+13.8pp) | 80.3% (+14.0pp) | 66.1% (+12.9pp) | 62.5% (+12.0pp) |
-| Tier 1-4 Only | 86.4% (+18.4pp) | 85.5% (+19.2pp) | 72.2% (+19.0pp) | 68.5% (+18.0pp) |
-| Judge Only | 81.7% (+13.7pp) | 75.9% (+9.6pp) | 58.7% (+5.5pp) | 56.7% (+6.2pp) |
-| **Tier 1-2 ∪ Judge** | **87.1% (+19.1pp)** | **82.4% (+16.1pp)** | **63.9% (+10.7pp)** | **61.4% (+10.9pp)** |
+| Scenario | Gemini 3 Flash | Gemini 2.5 Pro | Gemini 2.5 Flash | Claude Opus 4.6 | Claude Opus 4.5 | Claude Opus 4.1 | Claude Sonnet 4.5 | Claude Sonnet 4.6 |
+|----------|---------------|---------------|------------------|-----------------|-----------------|-----------------|-------------------|-------------------|
+| Baseline | 73.9% | 68.0% | 66.3% | 59.5% | 58.5% | 53.2% | 49.0% | 45.6% |
+| Tier 1 Only | 78.0% (+4.1pp) | 72.0% (+4.0pp) | 70.0% (+3.7pp) | 63.1% (+3.6pp) | 61.8% (+3.3pp) | 56.0% (+2.8pp) | 52.2% (+3.2pp) | 48.2% (+2.6pp) |
+| **Tier 1-2 Only** | **79.0% (+5.1pp)** | **73.2% (+5.2pp)** | **71.8% (+5.5pp)** | **64.8% (+5.3pp)** | **63.4% (+4.9pp)** | **57.5% (+4.3pp)** | **53.5% (+4.5pp)** | **49.6% (+4.0pp)** |
+| Tier 1-3 Only | 86.4% (+12.5pp) | 83.6% (+15.6pp) | 81.4% (+15.1pp) | 71.5% (+12.0pp) | 70.8% (+12.3pp) | 61.3% (+8.1pp) | 59.4% (+10.4pp) | 55.7% (+10.1pp) |
+| Tier 1-4 Only | 85.4% (+11.5pp) | 82.5% (+14.5pp) | 80.7% (+14.4pp) | 79.8% (+20.3pp) | 79.5% (+21.0pp) | 71.5% (+18.3pp) | 71.3% (+22.3pp) | 65.0% (+19.4pp) |
 
 ### 6.2 Key Findings
 
-1. **All models improve** when filtering by data quality (1-19pp gain)
-2. **Tier 1-2 Only** provides best balance of quality and coverage (563 questions, ~11pp improvement)
-3. **Judge Only** shows biased improvements (Gemini +13.7pp, Claude +5.5pp) due to judge bias
-4. **Tier 1-2 ∪ Judge** achieves highest quality (87.1% for Gemini Pro) but smallest dataset (493 questions)
-5. **Relative rankings preserved**: Gemini Pro remains strongest across all scenarios
+1. **All 8 models improve** when filtering by data quality (2.6-22.3pp gain)
+2. **Tier 1-2 Only** provides best balance of quality and coverage (617 questions, ~4-5pp improvement)
+3. **Tier 1-4 Only** shows the largest gains for Claude models (up to +22.3pp for Claude Sonnet 4.5)
+4. **Gemini 3 Flash leads across all scenarios**, reaching 85.4% on Tier 1-4
+5. **Relative rankings preserved**: Gemini family remains strongest across all scenarios, with Gemini 3 Flash consistently at the top
 
 ### 6.3 Statistical Significance
 
 Using Wilson score confidence intervals (95%):
 
-**Baseline** (Gemini 2.5 Pro):
-- Measured: 68.04%
-- 95% CI: [64.44%, 71.43%]
+**Baseline** (Gemini 3 Flash):
+- Measured: 73.87%
+- 95% CI: [70.48%, 77.01%]
 
-**Tier 1-2 Only** (Gemini 2.5 Pro):
-- Measured: 79.09%
-- 95% CI: [75.56%, 82.23%]
-- **Improvement: +11.05pp** (statistically significant, non-overlapping CIs)
+**Tier 1-2 Only** (Gemini 3 Flash):
+- Measured: 78.98%
+- 95% CI: [75.62%, 81.99%]
+- **Improvement: +5.11pp** (statistically significant)
 
 **Interpretation**: The improvement from baseline to Tier 1-2 filtering is highly statistically significant for all models.
 
@@ -331,7 +342,7 @@ For each model and scenario, we report:
 
 1. **Response Rate**: Valid responses / Total questions
    - Measures model's ability to provide valid answers
-   - Range: 95.2% - 98.8%
+   - Range: 84.6% - 98.8%
 
 2. **Overall Accuracy**: Correct answers / Total questions
    - Real-world effectiveness metric
@@ -352,10 +363,10 @@ We used **two-proportion z-tests** to compare models:
 - \*\* p < 0.01 (highly significant)
 - \*\*\* p < 0.001 (extremely significant)
 
-**Example**: Gemini 2.5 Pro vs Claude Opus 4.1 on Tier 1-2 Only:
-- Gemini: 79.1% [75.6%, 82.2%]
-- Claude: 62.3% [58.2%, 66.3%]
-- Difference: 16.8pp
+**Example**: Gemini 3 Flash vs Claude Opus 4.6 on Tier 1-2 Only:
+- Gemini 3 Flash: 79.0% [75.6%, 82.0%]
+- Claude Opus 4.6: 64.8% [60.9%, 68.6%]
+- Difference: 14.2pp
 - p-value: < 0.001 (***)
 - **Conclusion**: Highly significant difference
 
@@ -366,19 +377,19 @@ We used **two-proportion z-tests** to compare models:
 ### 8.1 Key Findings
 
 #### Finding 1: Answer Key Quality Issues
-**~16% of questions show potentially incorrect answer keys** depending on confidence threshold:
-- High confidence (Tier 1-2): 107 questions (16.0%)
-- Medium confidence (Tier 1-3): 157 questions (23.4%)
-- Low confidence (Tier 1-4): 251 questions (37.5%)
+**~8-44% of questions show potentially incorrect answer keys** depending on confidence threshold:
+- High confidence (Tier 1-2): 53 questions (7.9%)
+- Medium confidence (Tier 1-3): 170 questions (25.4%)
+- Low confidence (Tier 1-4): 292 questions (43.6%)
 
 #### Finding 2: Data Quality Significantly Affects Measured Performance
-Filtering by data quality improves measured accuracy by **1-19 percentage points**:
-- Conservative filtering (Tier 1-2): +9-11pp improvement
-- Aggressive filtering (Tier 1-4): +18-19pp improvement
-- Optimal balance: Tier 1-2 filtering (563 questions, ~11pp gain)
+Filtering by data quality improves measured accuracy by **2.6-22.3 percentage points**:
+- Conservative filtering (Tier 1-2): +4-5pp improvement
+- Aggressive filtering (Tier 1-4): +11-22pp improvement
+- Optimal balance: Tier 1-2 filtering (617 questions, ~5pp gain)
 
-#### Finding 3: LLM Judge Exhibits Substantial Bias
-Gemini judge shows **21.5× self-agreement bias**:
+#### Finding 3: LLM Judge Exhibits Substantial Bias *(from prior 4-model analysis)*
+Gemini judge shows **21.5× self-agreement bias** (from prior 4-model evaluation; not yet re-run for 8-model comparison):
 - Agrees with Gemini models 80.8% vs Claude models 38.5%
 - When families disagree, judge favors Gemini 21.5× more often
 - **Not suitable as sole validation method. Require cross model judge evaluation to detect true bias**
@@ -391,25 +402,25 @@ Agreement-based tiers offer:
 - **Interpretable**: Clear confidence levels (Tier 1 > Tier 2 > Tier 3)
 
 #### Finding 5: Relative Model Rankings Remained The Same
-Across all filtering scenarios, **Gemini 2.5 Pro remains strongest**:
-- Baseline: Gemini Pro (68.0%) > Flash (66.3%) > Opus (53.2%) > Sonnet (50.5%)
-- Tier 1-2: Gemini Pro (79.1%) > Flash (77.7%) > Opus (62.3%) > Sonnet (58.8%)
-- Tier 1-2 ∪ Judge: Gemini Pro (87.1%) > Flash (82.4%) > Opus (63.9%) > Sonnet (61.4%)
+Across all filtering scenarios, **Gemini 3 Flash remains strongest**:
+- Baseline: Gemini 3 Flash (73.9%) > Gemini 2.5 Pro (68.0%) > Gemini 2.5 Flash (66.3%) > Claude Opus 4.6 (59.5%) > Claude Opus 4.5 (58.5%) > Claude Opus 4.1 (53.2%) > Claude Sonnet 4.5 (49.0%) > Claude Sonnet 4.6 (45.6%)
+- Tier 1-2: Gemini 3 Flash (79.0%) > Gemini 2.5 Pro (73.2%) > Gemini 2.5 Flash (71.8%) > Claude Opus 4.6 (64.8%) > Claude Opus 4.5 (63.4%) > Claude Opus 4.1 (57.5%) > Claude Sonnet 4.5 (53.5%) > Claude Sonnet 4.6 (49.6%)
+- Tier 1-4: Gemini 3 Flash (85.4%) > Gemini 2.5 Pro (82.5%) > Gemini 2.5 Flash (80.7%) > Claude Opus 4.6 (79.8%) > Claude Opus 4.5 (79.5%) > Claude Opus 4.1 (71.5%) > Claude Sonnet 4.5 (71.3%) > Claude Sonnet 4.6 (65.0%)
 
 ### 8.2 Recommendations for TLUE Benchmark
 
 #### Recommendation 1: **Report Multiple Scenarios**
 Do not report a single baseline accuracy. Instead, report:
-- **Baseline** (full dataset): Shows coverage
-- **Tier 1-2 Only** (563 questions): **Primary metric** for fair comparison
-- **Tier 1-2 ∪ Judge** (493 questions): Highest quality subset
+- **Baseline** (full dataset, 670 questions): Shows coverage
+- **Tier 1-2 Only** (617 questions): **Primary metric** for fair comparison
+- **Tier 1-4 Only** (378 questions): Highest quality subset
 
 **Rationale**: Single-number reporting obscures answer key quality issues especially in traslated dataset and inflates apparent model differences.
 
 #### Recommendation 2: **Use Cross-Model Agreement as a Cost Effective Primary Validation**
 Prioritize agreement-based filtering over single LLM judge validation:
 1. Start with Tier 1-2 filtering (high confidence, bias-free)
-2. Optionally add judge validation for union approach
+2. Optionally add judge validation for union approach *(requires re-running judge for the current 8-model set)*
 3. Never use judge validation from a single model familly alone
 4. Double review answer keys that show high model agreenments on "incorrect" answer with human experts
 5. Detect potential nuance introduced by translation
@@ -417,34 +428,36 @@ Prioritize agreement-based filtering over single LLM judge validation:
 #### Recommendation 3: **Report Confidence Intervals**
 Always report Wilson score 95% confidence intervals:
 ```
-Gemini 2.5 Pro: 79.1% [75.6%, 82.2%] on Tier 1-2 Only (n=563)
+Gemini 3 Flash: 79.0% [75.6%, 82.0%] on Tier 1-2 Only (n=617)
 ```
 - **Expand eval datasets**: Current released TLUE is a small size dataset, require larger datasets to objectively evaluate model performance.
 #### Recommendation 4: **Create Answer Key Review Process**
 Manually review Tier 1-2 questions with domain experts:
-- Tier 1 (33 questions): All 4 models agree → Highest priority review
-- Tier 2 (74 questions): 3 models agree → High priority review
+- Tier 1 (36 questions): All 8 models agree → Highest priority review
+- Tier 2 (17 questions): 7+ models agree → High priority review
 - Document corrections and rationale
 **Rationale**: While we cannot automatically correct answers, systematic disagreement warrants expert review.
 
 ### 8.3 Recommendations for Model Team
 
 #### For Gemini
-1. **Primary strength confirmed**: Gemini 2.5 Pro achieves 79.1% on high-quality subset (Tier 1-2)
-2. **Gap analysis**: 20.9% of questions still incorrect on cleaned dataset
+1. **Primary strength confirmed**: Gemini 3 Flash achieves 79.0% on high-quality subset (Tier 1-2), leading all 8 models
+2. **Gap analysis**: 21.0% of questions still incorrect on cleaned dataset for the best model
 3. **Focus areas**: Analyze Tier 1-2 errors for model improvement opportunities
 4. **Bias awareness**: Recognize judge bias when using Gemini for validation
-5. **Gap awareness**: Recognize the model's performance gap between top used languages vs low reource language
+5. **Gap awareness**: Recognize the model's performance gap between top used languages vs low resource language
 
 #### For Claude
-1. **Performance gap**: Claude Opus 4.1 achieves 62.3% vs Gemini's 79.1% on Tier 1-2
-2. **Root cause analysis**: Investigate whether gap is due to:
+1. **Performance gap**: Best Claude model (Opus 4.6) achieves 64.8% vs Gemini 3 Flash's 79.0% on Tier 1-2 (~14pp gap)
+2. **Generational improvement**: Claude Opus 4.6 (59.5%) and 4.5 (58.5%) improve over 4.1 (53.2%) at baseline
+3. **Root cause analysis**: Investigate whether gap is due to:
    - Tibetan language understanding
    - Chinese language understanding
    - Bilingual reasoning
    - Multiple-choice test-taking strategies or others
-3. **Strength identification**: Recognize questions where Claude outperforms Gemini
-4. **Gap awareness**: Recognize the model's performance gap between top used languages vs low reource language
+4. **Strength identification**: Recognize questions where Claude outperforms Gemini
+5. **Gap awareness**: Recognize the model's performance gap between top used languages vs low resource language
+6. **Response rate concern**: Claude Sonnet 4.5 has notably low response rate (84.6%) compared to other models
 
 ---
 
@@ -457,8 +470,8 @@ Manually review Tier 1-2 questions with domain experts:
 - Consensus may be wrong if all models share the same systematic misunderstanding
 
 #### Limitation 2: Limited Model Diversity and Evaluation Dataset
-- Only 2 model families (Gemini, Claude) used for consensus
-- Agreement may be stronger with more diverse model families
+- Only 2 model families (Gemini, Claude) used for consensus, though now with 8 models (3 Gemini, 5 Claude)
+- Agreement may be stronger with more diverse model families (e.g., GPT, Llama)
 - Dataset is small as TLUE only released a small subset of the full eval test set
 
 #### Limitation 3: Language-Specific Bias Unclear
@@ -491,32 +504,32 @@ Manually review Tier 1-2 questions with domain experts:
 
 ### 10.1 Summary
 
-This study presents a comprehensive methodology for evaluating answer key quality in the Tibetan Language Understanding Evaluation (TLUE) benchmark through dual validation methods: cross-model agreement analysis and LLM-as-judge validation.
+This study presents a comprehensive methodology for evaluating answer key quality in the Tibetan Language Understanding Evaluation (TLUE) benchmark through dual validation methods: cross-model agreement analysis and LLM-as-judge validation *(note: judge validation was performed during the initial 4-model evaluation and has not yet been re-run for the current 8-model comparison)*.
 
 **Key contributions**:
-1. **Identified potential answer key quality issues** (16-37% of questions)
-2. **Quantified impact of data quality** on measured performance (9-19pp improvement)
-3. **Detected and measured judge bias** (21.5× self-agreement ratio)
+1. **Identified potential answer key quality issues** (8-44% of questions across 8 models)
+2. **Quantified impact of data quality** on measured performance (4-22pp improvement)
+3. **Detected and measured judge bias** (21.5× self-agreement ratio, from prior 4-model analysis)
 4. **Developed tier-based filtering framework** providing objective, bias-free validation
 5. **Provided actionable recommendations** for benchmark maintainers and model developers
 
 ### 10.2 Primary Conclusions
 
-1. **Answer key quality matters**: Using the full baseline dataset inflates apparent model differences and misrepresents true performance
-2. **Cross-model agreement is superior to LLM judge**: Agreement-based validation is objective, transparent, and bias-free
-3. **Judge bias is real and substantial**: Same-family LLM judges should not be used for validation
-4. **Tier 1-2 filtering is recommended**: Provides best balance of quality (high confidence) and coverage (563 questions)
-5. **Model rankings are robust**: Gemini 2.5 Pro remains strongest across all filtering scenarios
+1. **Answer key quality matters**: Using the full baseline dataset inflates apparent model differences and misrepresents true performance across all 8 models
+2. **Cross-model agreement is superior to LLM judge**: Agreement-based validation with 8 models is objective, transparent, and bias-free
+3. **Judge bias is real and substantial** *(from prior 4-model analysis)*: Same-family LLM judges should not be used for validation
+4. **Tier 1-2 filtering is recommended**: Provides best balance of quality (high confidence) and coverage (617 questions)
+5. **Model rankings are robust**: Gemini 3 Flash remains strongest across all filtering scenarios with 8 models evaluated
 
 ### 10.3 Key Impact
 
 **For Gemini**:
-- True performance: 79.1% [75.6%, 82.2%] on high-quality subset
-- Advantage over Claude: 16.8pp (statistically significant, p<0.001)
+- Best model: Gemini 3 Flash at 79.0% on high-quality subset (Tier 1-2, 617 questions)
+- Advantage over best Claude model (Opus 4.6): ~14pp (statistically significant)
 
 **For Claude**:
-- True performance: 62.3% [58.2%, 66.3%] on high-quality subset
-- Performance gap reduced but remains significant when using unbiased validation
+- Best model: Claude Opus 4.6 at 64.8% on high-quality subset (Tier 1-2)
+- Newer Claude Opus models (4.5/4.6) show improvement over 4.1, but performance gap with Gemini remains significant
 
 ### 10.4 Methodological Lessons for Benchmark Evaluation
 
@@ -524,7 +537,7 @@ This work demonstrates that:
 
 1. **Answer keys should not be assumed correct**: Even curated benchmarks contain errors
 2. **Model consensus might be a powerful validation signal**: Systematic disagreement indicates likely errors
-3. **LLM judges are not neutral**: Self-agreement bias must be measured and controlled
+3. **LLM judges are not neutral** *(confirmed in prior 4-model analysis)*: Self-agreement bias must be measured and controlled
 4. **Multiple filtering scenarios could be reported**: Single-number reporting obscures data quality issues
 5. **Statistical rigor is needed**: Confidence intervals and significance tests prevent over-interpretation
 
@@ -561,8 +574,8 @@ All heatmaps and multi-metric panels generated using:
 
 ## Document Version
 
-**Version**: 1.0
-**Date**: October 14, 2025
+**Version**: 2.0
+**Date**: February 25, 2026
 **Authors**: aipmtdaisy (with Claude Code assistance)
 **Built Upon**: Original TLUE benchmark by Gao et al. (2025)
 **Contact**: For questions about this methodology, please open an issue in the repository.

@@ -2,21 +2,42 @@
 """
 Calculate fair comparison metrics using 5-tier model agreement thresholds.
 Excludes questions with likely bad answer keys based on cross-model agreement patterns.
+
+Generalized for N models with brand-based tier logic.
 """
 
 import json
 import csv
 from pathlib import Path
 from collections import defaultdict, Counter
-from typing import Dict, List, Tuple, Set
+from typing import Dict, List, Tuple, Set, Optional
+
+# 8 models: new round + previous round (gemini-3-pro & gemini-3-1-pro excluded pending re-run)
+MODELS = [
+    'claude-opus-4-6', 'claude-opus-4-5', 'claude-sonnet-4-6', 'claude-sonnet-4-5',
+    'claude-opus-4-1',
+    'gemini-3-flash', 'gemini-2-5-flash', 'gemini-2-5-pro',
+]
+
+BRAND_MAP = {
+    'claude-opus-4-6': 'claude',
+    'claude-opus-4-5': 'claude',
+    'claude-sonnet-4-6': 'claude',
+    'claude-sonnet-4-5': 'claude',
+    'claude-opus-4-1': 'claude',
+    'gemini-3-flash': 'gemini',
+    'gemini-2-5-flash': 'gemini',
+    'gemini-2-5-pro': 'gemini',
+}
+
+NUM_MODELS = len(MODELS)
+
 
 def load_all_model_answers():
-    """Load answers from all 4 models"""
-    models = ['gemini-2-5-pro', 'gemini-2-5-flash', 'claude-opus-4-1', 'claude-sonnet-4-5']
+    """Load answers from all models"""
+    all_answers = {}
 
-    all_answers = {}  # model_id → (loc → {extracted_answer, answer_key, question})
-
-    for model_id in models:
+    for model_id in MODELS:
         combined_file = Path(f"TLUE/model_answer/{model_id}_eval_res/{model_id}_combined_results.jsonl")
 
         model_data = {}
@@ -39,96 +60,84 @@ def load_all_model_answers():
 
     return all_answers
 
-def categorize_question(gemini_pro, gemini_flash, claude_opus, claude_sonnet, answer_key):
-    """Categorize a question based on model agreement pattern"""
 
-    # Skip if any model didn't extract an answer
-    answers = [gemini_pro, gemini_flash, claude_opus, claude_sonnet]
+def categorize_question(model_answers: Dict[str, Optional[str]], answer_key: str) -> Tuple[str, Optional[str]]:
+    """Categorize a question based on model agreement pattern.
+
+    Tier logic for 7 models:
+        Tier 1: 6+ models agree on answer != key
+        Tier 2: 5 models agree on answer != key
+        Tier 3: 3-4 agree with cross-brand agreement (>=1 Gemini + >=1 Claude)
+        Tier 4: 2+ agree, same-brand only
+        Tier 5: No consensus
+    """
+    answers = list(model_answers.values())
+
     if None in answers:
         return 'extraction_failed', None
 
-    # Check if all agree with key
     if all(ans == answer_key for ans in answers):
         return 'all_correct', None
 
-    # Get unique answers that differ from key
-    different_answers = [ans for ans in answers if ans != answer_key]
-    if not different_answers:
+    answer_counts = Counter(answers)
+    non_key_counts = {ans: cnt for ans, cnt in answer_counts.items() if ans != answer_key}
+    if not non_key_counts:
         return 'all_correct', None
 
-    # Tier 1: All 4 models agree on same answer (different from key)
-    if len(set(answers)) == 1 and answers[0] != answer_key:
-        return 'tier1_all_4_agree', answers[0]
+    top_answer, top_count = max(non_key_counts.items(), key=lambda x: x[1])
 
-    # Tier 2: 3 models agree on same answer (different from key)
-    answer_counts = Counter(answers)
-    for ans, count in answer_counts.items():
-        if count == 3 and ans != answer_key:
-            return 'tier2_3_agree', ans
+    # Tier 1: near-unanimous (6+ of 7)
+    if top_count >= NUM_MODELS - 1:
+        return 'tier1_near_unanimous', top_answer
 
-    # Tier 3: Cross-brand agreement (1 Gemini + 1 Claude agree, different from key)
-    gemini_answers = {gemini_pro, gemini_flash}
-    claude_answers = {claude_opus, claude_sonnet}
+    # Tier 2: strong agreement (5 of 7)
+    if top_count >= NUM_MODELS - 2:
+        return 'tier2_strong_agree', top_answer
 
-    cross_brand_agreements = []
-    for g_ans in gemini_answers:
-        for c_ans in claude_answers:
-            if g_ans == c_ans and g_ans != answer_key:
-                cross_brand_agreements.append(g_ans)
+    # Check brand composition for remaining tiers
+    if top_count >= 3:
+        agreeing_brands = set()
+        for model_id, ans in model_answers.items():
+            if ans == top_answer:
+                agreeing_brands.add(BRAND_MAP[model_id])
+        if len(agreeing_brands) >= 2:
+            return 'tier3_cross_brand', top_answer
+        else:
+            return 'tier4_same_brand', top_answer
 
-    if cross_brand_agreements:
-        # Find the most common cross-brand agreement
-        agreement_counts = Counter(cross_brand_agreements)
-        most_common_ans = agreement_counts.most_common(1)[0][0]
-        return 'tier3_cross_brand', most_common_ans
+    # Check 2-model agreements
+    for ans, cnt in non_key_counts.items():
+        if cnt >= 2:
+            agreeing_brands = set()
+            for model_id, model_ans in model_answers.items():
+                if model_ans == ans:
+                    agreeing_brands.add(BRAND_MAP[model_id])
+            if len(agreeing_brands) >= 2:
+                return 'tier3_cross_brand', ans
+            else:
+                return 'tier4_same_brand', ans
 
-    # Tier 4: Same-brand agreement (both Gemini or both Claude agree, different from key)
-    gemini_agree = (gemini_pro == gemini_flash and gemini_pro != answer_key)
-    claude_agree = (claude_opus == claude_sonnet and claude_opus != answer_key)
-
-    if gemini_agree and claude_agree:
-        # Both brands agree (on different answers)
-        return 'tier4_both_brands', gemini_pro
-    elif gemini_agree:
-        return 'tier4_gemini_only', gemini_pro
-    elif claude_agree:
-        return 'tier4_claude_only', claude_opus
-
-    # Tier 5: No clear agreement
     return 'tier5_no_consensus', None
+
 
 def get_excluded_locs_for_threshold(categories: Dict, threshold: str) -> Set[str]:
     """Get set of question locs to exclude based on threshold"""
     excluded = set()
 
-    if threshold == 'tier1':
-        # Conservative: exclude only tier 1
-        for item in categories['tier1_all_4_agree']:
-            excluded.add(item['loc'])
+    tier_keys_by_level = {
+        'tier1': ['tier1_near_unanimous'],
+        'tier1-2': ['tier1_near_unanimous', 'tier2_strong_agree'],
+        'tier1-3': ['tier1_near_unanimous', 'tier2_strong_agree', 'tier3_cross_brand'],
+        'tier1-4': ['tier1_near_unanimous', 'tier2_strong_agree', 'tier3_cross_brand', 'tier4_same_brand'],
+    }
 
-    elif threshold == 'tier1-2':
-        # Balanced: exclude tier 1-2
-        for item in categories['tier1_all_4_agree'] + categories['tier2_3_agree']:
-            excluded.add(item['loc'])
-
-    elif threshold == 'tier1-3':
-        # Inclusive: exclude tier 1-3
-        for item in (categories['tier1_all_4_agree'] +
-                     categories['tier2_3_agree'] +
-                     categories['tier3_cross_brand']):
-            excluded.add(item['loc'])
-
-    elif threshold == 'tier1-4':
-        # Maximum: exclude tier 1-4
-        for item in (categories['tier1_all_4_agree'] +
-                     categories['tier2_3_agree'] +
-                     categories['tier3_cross_brand'] +
-                     categories['tier4_both_brands'] +
-                     categories['tier4_gemini_only'] +
-                     categories['tier4_claude_only']):
+    keys = tier_keys_by_level.get(threshold, [])
+    for key in keys:
+        for item in categories.get(key, []):
             excluded.add(item['loc'])
 
     return excluded
+
 
 def calculate_model_metrics(model_id: str, all_answers: Dict, excluded_locs: Set[str]) -> Dict:
     """Calculate metrics for a model excluding specified questions"""
@@ -139,7 +148,6 @@ def calculate_model_metrics(model_id: str, all_answers: Dict, excluded_locs: Set
     correct_answers = 0
 
     for loc, data in model_data.items():
-        # Skip excluded questions
         if loc in excluded_locs:
             continue
 
@@ -147,13 +155,11 @@ def calculate_model_metrics(model_id: str, all_answers: Dict, excluded_locs: Set
         extracted = data['extracted']
         answer_key = data['answer_key']
 
-        # Check if model provided a valid answer
         if extracted is not None:
             valid_responses += 1
             if extracted == answer_key:
                 correct_answers += 1
 
-    # Calculate metrics
     response_rate = (valid_responses / total_evaluated * 100) if total_evaluated > 0 else 0
     accuracy = (correct_answers / total_evaluated * 100) if total_evaluated > 0 else 0
     conditional_accuracy = (correct_answers / valid_responses * 100) if valid_responses > 0 else 0
@@ -168,9 +174,11 @@ def calculate_model_metrics(model_id: str, all_answers: Dict, excluded_locs: Set
         'conditional_accuracy': conditional_accuracy
     }
 
+
 def main():
     print("="*120)
     print("Tier-Based Fair Comparison Metrics")
+    print(f"Models: {NUM_MODELS} ({', '.join(MODELS)})")
     print("="*120)
     print()
     print("Calculating fair model comparisons using 5-tier agreement thresholds")
@@ -180,52 +188,42 @@ def main():
     all_answers = load_all_model_answers()
 
     # Get all question locs (from first model)
-    all_locs = list(all_answers['gemini-2-5-pro'].keys())
+    first_model = MODELS[0]
+    all_locs = list(all_answers[first_model].keys())
 
     # Categorize all questions
-    categories = {
-        'tier1_all_4_agree': [],
-        'tier2_3_agree': [],
-        'tier3_cross_brand': [],
-        'tier4_both_brands': [],
-        'tier4_gemini_only': [],
-        'tier4_claude_only': [],
-        'tier5_no_consensus': [],
-        'all_correct': [],
-        'extraction_failed': []
-    }
+    categories = defaultdict(list)
 
     for loc in all_locs:
-        gemini_pro = all_answers['gemini-2-5-pro'][loc]['extracted']
-        gemini_flash = all_answers['gemini-2-5-flash'][loc]['extracted']
-        claude_opus = all_answers['claude-opus-4-1'][loc]['extracted']
-        claude_sonnet = all_answers['claude-sonnet-4-5'][loc]['extracted']
-        answer_key = all_answers['gemini-2-5-pro'][loc]['answer_key']
-        question = all_answers['gemini-2-5-pro'][loc]['question']
+        model_ans = {}
+        for model_id in MODELS:
+            if loc in all_answers[model_id]:
+                model_ans[model_id] = all_answers[model_id][loc]['extracted']
+            else:
+                model_ans[model_id] = None
 
-        category, agreed_answer = categorize_question(
-            gemini_pro, gemini_flash, claude_opus, claude_sonnet, answer_key
-        )
+        answer_key = all_answers[first_model][loc]['answer_key']
+        question = all_answers[first_model][loc]['question']
 
-        categories[category].append({
+        category, agreed_answer = categorize_question(model_ans, answer_key)
+
+        entry = {
             'loc': loc,
             'question': question,
             'answer_key': answer_key,
-            'gemini_pro': gemini_pro,
-            'gemini_flash': gemini_flash,
-            'claude_opus': claude_opus,
-            'claude_sonnet': claude_sonnet,
             'agreed_answer': agreed_answer
-        })
+        }
+        for model_id in MODELS:
+            entry[model_id] = model_ans[model_id]
+
+        categories[category].append(entry)
 
     # Print tier summary
     total = len(all_locs)
-    tier1 = len(categories['tier1_all_4_agree'])
-    tier2 = len(categories['tier2_3_agree'])
+    tier1 = len(categories['tier1_near_unanimous'])
+    tier2 = len(categories['tier2_strong_agree'])
     tier3 = len(categories['tier3_cross_brand'])
-    tier4_both = len(categories['tier4_both_brands'])
-    tier4_g = len(categories['tier4_gemini_only'])
-    tier4_c = len(categories['tier4_claude_only'])
+    tier4 = len(categories['tier4_same_brand'])
     tier5 = len(categories['tier5_no_consensus'])
     correct = len(categories['all_correct'])
     failed = len(categories['extraction_failed'])
@@ -233,20 +231,14 @@ def main():
     print("Question Categorization Summary:")
     print("-"*120)
     print(f"Total questions: {total}")
-    print(f"  Tier 1 (all 4 agree):          {tier1:3d} ({tier1/total*100:5.1f}%)")
-    print(f"  Tier 2 (3 agree):              {tier2:3d} ({tier2/total*100:5.1f}%)")
+    print(f"  Tier 1 ({NUM_MODELS-1}+ agree):         {tier1:3d} ({tier1/total*100:5.1f}%)")
+    print(f"  Tier 2 ({NUM_MODELS-2}+ agree):         {tier2:3d} ({tier2/total*100:5.1f}%)")
     print(f"  Tier 3 (cross-brand):          {tier3:3d} ({tier3/total*100:5.1f}%)")
-    print(f"  Tier 4 (same-brand):           {tier4_both + tier4_g + tier4_c:3d} ({(tier4_both + tier4_g + tier4_c)/total*100:5.1f}%)")
-    print(f"    - Both brands (diff answers):  {tier4_both:3d}")
-    print(f"    - Gemini pair only:            {tier4_g:3d}")
-    print(f"    - Claude pair only:            {tier4_c:3d}")
+    print(f"  Tier 4 (same-brand):           {tier4:3d} ({tier4/total*100:5.1f}%)")
     print(f"  Tier 5 (no consensus):         {tier5:3d} ({tier5/total*100:5.1f}%)")
     print(f"  All correct:                   {correct:3d} ({correct/total*100:5.1f}%)")
     print(f"  Extraction failed:             {failed:3d} ({failed/total*100:5.1f}%)")
     print()
-
-    # Models to evaluate
-    models = ['gemini-2-5-pro', 'gemini-2-5-flash', 'claude-opus-4-1', 'claude-sonnet-4-5']
 
     # Thresholds to test
     thresholds = [
@@ -265,7 +257,6 @@ def main():
         print(f"{threshold_name}")
         print("="*120)
 
-        # Get excluded locs for this threshold
         if excluded_locs is None:
             excluded_locs = get_excluded_locs_for_threshold(categories, threshold_id)
 
@@ -276,12 +267,11 @@ def main():
         print(f"Questions evaluated: {evaluated_count}")
         print()
 
-        # Calculate metrics for each model
         print(f"{'Model':<25} {'Evaluated':<12} {'Valid Resp':<12} {'Correct':<10} {'Resp Rate':<12} {'Accuracy':<12} {'Cond. Acc':<12}")
         print("-"*120)
 
         threshold_results = []
-        for model in models:
+        for model in MODELS:
             metrics = calculate_model_metrics(model, all_answers, excluded_locs)
             threshold_results.append(metrics)
 
@@ -289,7 +279,6 @@ def main():
                   f"{metrics['correct_answers']:<10} {metrics['response_rate']:>10.2f}% {metrics['accuracy']:>10.2f}% "
                   f"{metrics['conditional_accuracy']:>10.2f}%")
 
-            # Add threshold info for CSV
             metrics['threshold'] = threshold_id
             metrics['threshold_name'] = threshold_name
             metrics['questions_excluded'] = excluded_count
@@ -327,7 +316,7 @@ def main():
     print("="*120)
     print()
 
-    for model in models:
+    for model in MODELS:
         model_results = [r for r in all_results if r['model'] == model]
         print(f"\n{model}:")
         print(f"{'Threshold':<30} {'Questions':<12} {'Resp Rate':<12} {'Accuracy':<12} {'Cond. Acc':<12}")

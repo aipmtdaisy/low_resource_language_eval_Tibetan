@@ -20,12 +20,16 @@ matplotlib.use('Agg')
 plt.style.use('seaborn-v0_8-whitegrid')
 matplotlib.rcParams['font.family'] = 'DejaVu Sans'
 
-# Model configuration
+# Model configuration (8 models: 5 Claude + 3 Gemini)
 MODEL_INFO = {
-    'gemini-2-5-pro': {'label': 'Gemini 2.5 Pro', 'color': '#4285F4', 'marker': 'o'},
-    'gemini-2-5-flash': {'label': 'Gemini 2.5 Flash', 'color': '#34A853', 'marker': 's'},
-    'claude-opus-4-1': {'label': 'Claude Opus 4', 'color': '#EA4335', 'marker': '^'},
-    'claude-sonnet-4-5': {'label': 'Claude Sonnet 4.5', 'color': '#FBBC04', 'marker': 'D'}
+    'claude-opus-4-6': {'label': 'Claude Opus 4.6', 'color': '#8B0000', 'marker': 'o'},
+    'claude-opus-4-5': {'label': 'Claude Opus 4.5', 'color': '#EA4335', 'marker': '^'},
+    'claude-sonnet-4-6': {'label': 'Claude Sonnet 4.6', 'color': '#E67878', 'marker': 'v'},
+    'claude-sonnet-4-5': {'label': 'Claude Sonnet 4.5', 'color': '#FBBC04', 'marker': 'D'},
+    'claude-opus-4-1': {'label': 'Claude Opus 4.1', 'color': '#C74444', 'marker': 'P'},
+    'gemini-3-flash': {'label': 'Gemini 3 Flash', 'color': '#34A853', 'marker': 's'},
+    'gemini-2-5-flash': {'label': 'Gemini 2.5 Flash', 'color': '#4A8FD8', 'marker': 'p'},
+    'gemini-2-5-pro': {'label': 'Gemini 2.5 Pro', 'color': '#1A237E', 'marker': 'h'},
 }
 
 
@@ -344,7 +348,8 @@ def create_recommended_scenarios_comparison():
 
     # Left plot: Accuracy comparison
     x = np.arange(len(scenarios))
-    width = 0.2
+    num_models = len(MODEL_INFO)
+    width = 0.8 / num_models
 
     for i, (model_id, info) in enumerate(MODEL_INFO.items()):
         accuracies = []
@@ -355,7 +360,7 @@ def create_recommended_scenarios_comparison():
             else:
                 accuracies.append(0)
 
-        offset = (i - 1.5) * width
+        offset = (i - (num_models - 1) / 2) * width
         bars = ax1.bar(x + offset, accuracies, width,
                       label=info['label'],
                       color=info['color'],
