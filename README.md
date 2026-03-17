@@ -34,7 +34,7 @@ This repository extends the [original TLUE benchmark](https://github.com/Vicentv
 
 **The enhancements added:**
 - **Answer Key Validation** (16-37% of questions flagged as potentially incorrect)
-- **Cross-Model Agreement Analysis** (consensus validation across 4 models)
+- **Cross-Model Agreement Analysis** (consensus validation across 8 models)
 - **LLM-as-Judge Validation** with systematic bias detection (21.5× self-agreement ratio quantified)
 - **Statistical Rigor** (Wilson score confidence intervals, two-proportion z-tests)
 - **Tier-Based Filtering Framework** (5 confidence levels for data quality assessment)
@@ -55,7 +55,7 @@ This repository includes:
 - **Rigorous Validation**: Dual-method answer key validation (cross-model agreement + LLM-as-judge)
 - **Bias Detection**: Quantified judge bias (21.5× self-agreement ratio) with mitigation strategies (human in the loop recommended to further investigate potential bias)
 - **Statistical Rigor**: Wilson score confidence intervals and significance testing
-- **Multi-Model Support**: Tested with Gemini 2.5 Pro/Flash and Claude Opus 4.1/Sonnet 4.5
+- **Multi-Model Support**: Tested with 8 LLMs: Gemini 3 Flash/2.5 Pro/2.5 Flash and Claude Opus 4.6/4.5/4.1/Sonnet 4.6/4.5
 - **Tier-Based Filtering**: Confidence-based question filtering (16-37% of questions flagged) to reduce potential answer key quality issue 
 
 ## Quick Start
@@ -112,23 +112,31 @@ python analyze_cross_model_agreement_all_questions.py
 
 ### Baseline Performance (670 questions)
 
-| Model | Conditional Accuracy |
-|-------|---------------------|
-| Gemini 2.5 Pro | 68.0% [64.4%, 71.4%] |
-| Gemini 2.5 Flash | 66.3% |
-| Claude Opus 4.1 | 53.2% [49.4%, 57.0%] |
-| Claude Sonnet 4.5 | 50.5% |
+| Rank | Model | Valid Responses | Response Rate | Conditional Accuracy |
+|------|-------|----------------|---------------|---------------------|
+| 1 | Gemini 3 Flash | 662/670 | 98.8% | **73.9%** |
+| 2 | Gemini 2.5 Pro | 657/670 | 98.1% | **68.0%** |
+| 3 | Gemini 2.5 Flash | 649/670 | 96.9% | **66.3%** |
+| 4 | Claude Opus 4.6 | 619/670 | 92.4% | **59.5%** |
+| 5 | Claude Opus 4.5 | 633/670 | 94.5% | **58.5%** |
+| 6 | Claude Opus 4.1 | 643/670 | 96.0% | **53.2%** |
+| 7 | Claude Sonnet 4.5 | 567/670 | 84.6% | **49.0%** |
+| 8 | Claude Sonnet 4.6 | 658/670 | 98.2% | **45.6%** |
 
-### Tier 1-2 Filtered (563 questions, recommended)
+### Tier 1-2 Filtered (617 questions, recommended)
 
-| Model | Conditional Accuracy |
-|-------|---------------------|
-| Gemini 2.5 Pro | **79.1% [75.6%, 82.2%]** |
-| Gemini 2.5 Flash | 77.7% |
-| Claude Opus 4.1 | 62.3% [58.2%, 66.3%] |
-| Claude Sonnet 4.5 | 58.8% |
+| Rank | Model | Conditional Accuracy | Change from Baseline |
+|------|-------|---------------------|---------------------|
+| 1 | Gemini 3 Flash | **79.0%** | +5.1pp |
+| 2 | Gemini 2.5 Pro | **73.2%** | +5.1pp |
+| 3 | Gemini 2.5 Flash | **71.8%** | +5.6pp |
+| 4 | Claude Opus 4.6 | **64.8%** | +5.4pp |
+| 5 | Claude Opus 4.5 | **63.4%** | +5.0pp |
+| 6 | Claude Opus 4.1 | **57.5%** | +4.3pp |
+| 7 | Claude Sonnet 4.5 | **53.5%** | +4.5pp |
+| 8 | Claude Sonnet 4.6 | **49.6%** | +4.0pp |
 
-**Filtering improves measured accuracy by 9-19 percentage points** by excluding questions with likely answer key errors (more than 3 models agreed on the same answer which is different from the provided answer key).
+**Filtering improves measured accuracy by 4-6 percentage points** by excluding questions with likely answer key errors (7-8 models agreed on the same answer which is different from the provided answer key).
 
 ## Methodology
 
@@ -136,7 +144,7 @@ Our validation methodology includes:
 
 1. **Cross-Model Agreement Analysis**: Identifies questions where multiple independent models agree on an answer different from the provided key
 2. **LLM-as-Judge Validation**: Uses Gemini 2.5 Pro to verify answer keys with bias detection
-3. **Tier-Based Filtering**: Confidence levels from Tier 1 (all 4 models agree) to Tier 5 (no consensus)
+3. **Tier-Based Filtering**: Confidence levels from Tier 1 (all 8 models agree) to Tier 5 (no consensus)
 4. **Statistical Validation**: Wilson score confidence intervals and two-proportion z-tests
 
 For complete methodology details, see [METHODOLOGY.md](METHODOLOGY.md).
@@ -190,11 +198,13 @@ python test_visualization_utils.py
 
 ## Key Findings
 
-1. **16-37% of questions have potentially incorrect answer keys** (depending on confidence threshold)
-2. **Data quality significantly affects measured performance** (+9 to +19 percentage points improvement)
-3. **LLM judges exhibit substantial bias** (21.5× self-agreement ratio for Gemini judge) or Gemini model as a judge indeed show much higher accuracy (require human validation)
-4. **Cross-model agreement provides objective validation** (bias-free, transparent, efficient)
-5. **Model rankings are preserved across filtering scenarios**
+1. **Massive progress since the original TLUE paper** — Gemini 3 Flash (73.9%) more than doubled Gemini 1.5-Flash's original 31.0%, and Claude Opus 4.6 (59.5%) improved +23.9pp over Claude-3.5-Sonnet's 35.6%
+2. **Gemini 3 Flash leads across all scenarios** — 73.9% baseline, 79.0% on the recommended Tier 1-2 subset (617 questions)
+3. **Answer key quality significantly impacts results** — filtering likely errors improves all models by 4-22pp, with Claude models benefiting most at aggressive thresholds
+4. **Relative model rankings are stable** — the ordering Gemini 3 Flash > 2.5 Pro > 2.5 Flash > Claude Opus 4.6 > 4.5 > 4.1 > Sonnet 4.5 > Sonnet 4.6 holds across all filtering scenarios
+5. **~8% of questions have high-confidence answer key issues** — 53 questions (Tier 1-2) where 7-8 models unanimously disagree with the provided key
+6. **Newer Claude Opus models improve over 4.1** — Opus 4.6 (59.5%) and 4.5 (58.5%) both surpass Opus 4.1 (53.2%), though a ~14pp gap with Gemini 3 Flash persists
+7. **LLM judges exhibit substantial bias** (21.5× self-agreement ratio for Gemini judge) — cross-model agreement provides objective, bias-free validation
 
 ## Citation
 
